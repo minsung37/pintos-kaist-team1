@@ -5,6 +5,7 @@
         "filesys.h": "c",
         "file.h": "c",
         "*.inc": "c",
-        "list.h": "c"
+        "list.h": "c",
+        "vm.h": "c"
     }
 }

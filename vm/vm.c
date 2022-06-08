@@ -1,8 +1,14 @@
 /* vm.c: Generic interface for virtual memory objects. */
 
 #include "threads/malloc.h"
+#include "threads/thread.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+#include "hash.h"
+
+
+
+static struct list frame_list;
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -10,12 +16,17 @@ void
 vm_init (void) {
 	vm_anon_init ();
 	vm_file_init ();
+
+
 #ifdef EFILESYS  /* For project 4 */
 	pagecache_init ();
 #endif
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+	// 확실하지 않음
+	// 프레임리스트 init
+	list_init(&frame_list);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -63,27 +74,34 @@ err:
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page *page = NULL;
+	struct page *page;
 	/* TODO: Fill this function. */
-
-	return page;
+	// struct page *found_page = page_lookup (va);
+  page->va = va;
+  struct hash_elem *e = hash_find (&spt->hash_table, &page->h_elem);
+  return e != NULL ? hash_entry (e, struct page, h_elem) : NULL;
 }
 
 /* Insert PAGE into spt with validation. */
 bool
 spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
-	int succ = false;
 	/* TODO: Fill this function. */
-
-	return succ;
+	struct hash_elem *e = hash_insert (&spt->hash_table, &page->h_elem);
+	if (e == NULL) {
+		return true;
+	}
+	return false;
 }
 
 void
 spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
+	hash_delete(&spt->hash_table, &page->h_elem);
 	vm_dealloc_page (page);
+	
 	return true;
 }
+
 
 /* Get the struct frame, that will be evicted. */
 static struct frame *
@@ -112,9 +130,15 @@ static struct frame *
 vm_get_frame (void) {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
-
+	// 1. frame 할당
+	frame = palloc_get_page(PAL_USER);
+	// 2. 모든 프레임이 차있어서 할당 실패시
+	// frame list 순회하면서 타겟 프레임 제거(해야함 앞으로 나중에 lru?)
+	// swap out 아직 미완성으로 인해 나중에 할 것.
+	list_push_back(&frame_list, &frame->f_elem);
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
+	PANIC("todo");
 	return frame;
 }
 
@@ -153,7 +177,8 @@ bool
 vm_claim_page (void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function */
-
+	page = palloc_get_page(0);
+	page->va = va;
 	return vm_do_claim_page (page);
 }
 
@@ -166,14 +191,44 @@ vm_do_claim_page (struct page *page) {
 	frame->page = page;
 	page->frame = frame;
 
-	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-
+	/* TODO: Insert page table entry t>o map page's VA to frame's PA. */
+	spt_insert_page(&thread_current ()->spt, page);
 	return swap_in (page, frame->kva);
 }
+
+/* Returns a hash value for page p. */
+unsigned
+page_hash (const struct hash_elem *p_, void *aux UNUSED) {
+  const struct page *p = hash_entry (p_, struct page, h_elem);
+  return hash_bytes (&p->va, sizeof p->va);
+}
+
+/* Returns true if page a precedes page b. */
+bool
+page_less (const struct hash_elem *a_,
+           const struct hash_elem *b_, void *aux UNUSED) {
+  const struct page *a = hash_entry (a_, struct page, h_elem);
+  const struct page *b = hash_entry (b_, struct page, h_elem);
+
+  return a->va < b->va;
+}
+
+// /* Returns the page containing the given virtual address, or a null pointer if no such page exists. */
+// struct page *
+// page_lookup (const void *va) {
+//   struct page *page;
+//   struct hash_elem *e;
+
+//   page->va = va;
+//   e = hash_find (&thread_current ()->spt->hash_table, &page->h_elem);
+//   return e != NULL ? hash_entry (e, struct page, h_elem) : NULL;
+// }
+
 
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
+	hash_init(&spt->hash_table, page_hash, page_less, NULL);
 }
 
 /* Copy supplemental page table from src to dst */
