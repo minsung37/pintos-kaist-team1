@@ -436,7 +436,7 @@ int thread_get_recent_cpu(void)
 	int new_recent_cpu = fp_to_int_round(mult_mixed(thread_current()->recent_cpu, 100));
 	intr_set_level(old_level);
 	return new_recent_cpu;
-}
+} 
 
 /* Idle thread.  Executes when no other thread is ready to run.
 
