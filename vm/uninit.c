@@ -44,7 +44,8 @@ uninit_new (struct page *page, void *va, vm_initializer *init,
 
 /* Initalize the page on first fault */
 static bool
-uninit_initialize (struct page *page, void *kva) {
+uninit_initialize(struct page *page, void *kva)
+{
 	struct uninit_page *uninit = &page->uninit;
 
 	/* Fetch first, page_initialize may overwrite the values */
@@ -52,9 +53,16 @@ uninit_initialize (struct page *page, void *kva) {
 	void *aux = uninit->aux;
 
 	/* TODO: You may need to fix this function. */
-	return uninit->page_initializer (page, uninit->type, kva) &&
-		(init ? init (page, aux) : true);
+
+	// 바꿔야 할지도 모름(우식) - Lazy Loading for Executable
+	/* Initializes the page on the first fault.
+	 * The template code first fetches vm_initializer and aux 
+	 * and calls the corresponding page_initializer through a function pointer.
+	 * You may need to modify the function depending on your design. */
+	return uninit->page_initializer(page, uninit->type, kva) &&
+				 (init ? init(page, aux) : true);
 }
+
 
 /* Free the resources hold by uninit_page. Although most of pages are transmuted
  * to other page objects, it is possible to have uninit pages when the process

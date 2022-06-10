@@ -46,22 +46,20 @@ tid_t process_create_initd(const char *file_name)
 	char *fn_copy;
 	tid_t tid;
 
-	// puts("debug choi create initd");
-
 	/* Make a copy of FILE_NAME.
 	 * Otherwise there's a race between the caller and load(). */
-	fn_copy = palloc_get_page(0);
+	fn_copy = palloc_get_page (0);
 	if (fn_copy == NULL)
 		return TID_ERROR;
-	strlcpy(fn_copy, file_name, PGSIZE);
+	strlcpy (fn_copy, file_name, PGSIZE);
 
 	/* Create a new thread to execute FILE_NAME. */
 	char *save_ptr;
-	strtok_r(file_name, " ", &save_ptr);
+	strtok_r (file_name, " ", &save_ptr);
 
-	tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
+	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
-		palloc_free_page(fn_copy);
+		palloc_free_page (fn_copy);
 	return tid;
 }
 
@@ -70,7 +68,7 @@ static void
 initd(void *f_name)
 {
 #ifdef VM
-	supplemental_page_table_init(&thread_current()->spt);
+	supplemental_page_table_init(&thread_current ()->spt);
 #endif
 
 	process_init();
@@ -82,14 +80,14 @@ initd(void *f_name)
 
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
-tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
+tid_t 
+process_fork(const char *name, struct intr_frame *if_ UNUSED)
 {
 	/* Clone current thread to new thread.*/
 	tid_t ctid = thread_create(name, PRI_DEFAULT, __do_fork, thread_current());
-	// !!!!!!!!!!!!!!!!!!!!!!!
 	if (ctid == TID_ERROR)
 		return -1;
-	// !!!!!!!!!!!!!!!!!!!!!!!
+
 	struct thread *child = get_child_process(ctid);
 	sema_down(&child->fork_sema);
 	return ctid;
@@ -182,20 +180,20 @@ __do_fork(void *aux)
 	{
 		if (parent->fdt[i] != NULL)
 		{
-			current->fdt[i] = file_duplicate(parent->fdt[i]);
+			current->fdt[i] = file_duplicate (parent->fdt[i]);
 		}
 	}
 	current->next_fd = parent->next_fd;
 
-	sema_up(&current->fork_sema);
+	sema_up (&current->fork_sema);
 
-	process_init();
+	process_init ();
 	/* Finally, switch to the newly created process. */
 	if (succ)
-		do_iret(&if_);
+		do_iret (&if_);
 error:
-	sema_up(&current->fork_sema);
-	exit(-1);
+	sema_up (&current->fork_sema);
+	exit (-1);
 }
 
 /* Switch the current execution context to the f_name.
@@ -400,10 +398,10 @@ load(const char *file_name, struct intr_frame *if_)
 	int i;
 
 	/* Allocate and activate page directory. */
-	t->pml4 = pml4_create();
+	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
 		goto done;
-	process_activate(thread_current());
+	process_activate (thread_current());
 
 	char *token, *save_ptr;
 	char *argv[64];
@@ -690,6 +688,7 @@ setup_stack(struct intr_frame *if_)
 		success = install_page(((uint8_t *)USER_STACK) - PGSIZE, kpage, true);
 		if (success)
 			if_->rsp = USER_STACK;
+			
 		else
 			palloc_free_page(kpage);
 	}
@@ -719,12 +718,20 @@ install_page(void *upage, void *kpage, bool writable)
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
+/* aux as arguments. aux is the information you set up in load_segment. 
+ * Using this information, you have to find the file to read the segment from 
+ * and eventually read the segment into memory. */
 static bool
-lazy_load_segment(struct page *page, void *aux)
+lazy_load_segment(struct page *page, struct file_info *aux)
 {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+	printf("lazy load!!!!!!!!\n");
+	page->ofs = aux->ofs;
+	page->file_size = aux->file_size;
+	page->read_bytes = aux->read_bytes;
+	page->zero_bytes = aux->zero_bytes;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -749,6 +756,9 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT(pg_ofs(upage) == 0);
 	ASSERT(ofs % PGSIZE == 0);
 
+	struct file_info file_info;
+
+	file_seek(file, ofs);
 	while (read_bytes > 0 || zero_bytes > 0)
 	{
 		/* Do calculate how to fill this page.
@@ -758,9 +768,14 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		file_info.ofs = ofs;
+		file_info.file_size = file_length (file);
+		file_info.read_bytes = page_read_bytes;
+		file_info.zero_bytes = page_zero_bytes;
+		// 2022 뇌피셜
+
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
-											writable, lazy_load_segment, aux))
+											writable, lazy_load_segment, &file_info))
 			return false;
 
 		/* Advance. */
@@ -782,7 +797,10 @@ setup_stack(struct intr_frame *if_)
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
-
+	if (success = vm_alloc_page_with_initializer(VM_MARKER_0, stack_bottom, 
+												 false, NULL, NULL)) {
+		if_->rsp = USER_STACK;
+	}
 	return success;
 }
 #endif /* VM */

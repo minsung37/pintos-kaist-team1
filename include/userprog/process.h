@@ -3,6 +3,15 @@
 
 #include "threads/thread.h"
 
+
+struct file_info {
+	off_t ofs;
+	off_t file_size;
+	size_t read_bytes;
+	size_t zero_bytes;
+};
+
+
 tid_t process_create_initd (const char *file_name);
 tid_t process_fork (const char *name, struct intr_frame *if_);
 int process_exec (void *f_name);

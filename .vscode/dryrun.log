@@ -1,7 +1,6 @@
 make --dry-run --always-make --keep-going --print-directory
-make: Entering directory '/home/ubuntu/swjungle/pintos-kaist'
- 
+make: Entering directory '/home/ubuntu/pintos-kaist-team1'
 echo "Run 'make' in subdirectories: threads userprog vm filesys."
 echo "This top-level make has only 'clean' targets."
-make: Leaving directory '/home/ubuntu/swjungle/pintos-kaist'
+make: Leaving directory '/home/ubuntu/pintos-kaist-team1'
  
