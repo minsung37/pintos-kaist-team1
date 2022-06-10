@@ -9,10 +9,6 @@
 #include "devices/timer.h"
 #include "threads/vaddr.h"
 
-
-#define list_elem_to_hash_elem(LIST_ELEM)                       \
-	list_entry(LIST_ELEM, struct hash_elem, list_elem)
-
 /* ------------------ project3 -------------------- */
 static struct list frame_table;
 /* ------------------------------------------------ */
@@ -108,13 +104,15 @@ err:
 
 /* Find VA from spt and return page. On error, return NULL. */
 // spt_find가 이상함....
+// 안 이상함.
+
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page *page;
 	struct hash_elem *e;
 	/* TODO: Fill this function. */
   	page->va = pg_round_down(va);
-  	struct hash_elem *e = hash_find (&spt->hash_table, &page->h_elem);
+  	e = hash_find (&spt->hash_table, &page->h_elem);
   	return e != NULL ? hash_entry (e, struct page, h_elem) : NULL;
 }
 
