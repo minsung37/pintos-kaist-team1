@@ -5,6 +5,7 @@
 
 
 struct file_info {
+	struct file *file;
 	off_t ofs;
 	off_t file_size;
 	size_t read_bytes;
