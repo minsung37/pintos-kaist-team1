@@ -2,12 +2,12 @@
 
 #include "threads/malloc.h"
 #include "threads/thread.h"
+#include "threads/mmu.h"
+#include "threads/vaddr.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
 #include "hash.h"
-#include "threads/thread.h"
 #include "devices/timer.h"
-#include "threads/vaddr.h"
 
 /* ------------------ project3 -------------------- */
 static struct list frame_table;
@@ -57,12 +57,14 @@ static struct frame *vm_evict_frame (void);
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
  * `vm_alloc_page`. */
+
+// vm_alloc_page_with_initializer(VM_ANON, upage, writable,
+// 								lazy_load_segment, &file_info)
 bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
 
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
-
 	struct supplemental_page_table *spt = &thread_current ()->spt;
 
 	/* Check wheter the upage is already occupied or not. */
@@ -70,17 +72,13 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* TODO: Create the page, fetch the initializer according to the VM type,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
-		
-		// page = malloc (size of struct page);
-		if (!vm_claim_page (upage)) {
-			goto err;
-		}
-		struct page *newpage = spt_find_page (spt, upage);
+
+		struct page *newpage = (struct page *) calloc (1, sizeof (struct page));
 		bool *initializer;
-		switch (type) {
-			// case VM_UNINIT:
-			// 	initializer;
-			// 	break;
+
+		newpage->writable = writable;
+
+		switch (VM_TYPE(type)) {
 			case VM_ANON:
 				initializer = &anon_initializer;
 				break;
@@ -90,8 +88,10 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 			default:
 				goto err;
 		}
+
 		uninit_new (newpage, upage, init, type, aux, initializer);
 		/* TODO: Insert the page into the spt. */
+
 		if (!spt_insert_page (spt, newpage)) {
 			goto err;
 		}
@@ -103,9 +103,6 @@ err:
 }
 
 /* Find VA from spt and return page. On error, return NULL. */
-// spt_find가 이상함....
-// 안 이상함.
-
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page *page;
@@ -166,7 +163,7 @@ vm_get_frame (void) {
 	/* TODO: Fill this function. */
 	// 1. frame 할당
 	frame = calloc(1, sizeof (struct frame));
-	frame->kva = palloc_get_page(PAL_USER);
+	frame->kva = palloc_get_page(PAL_USER | PAL_ZERO);
 	if (frame->kva == NULL)
 		PANIC("todo");
 	// 2. 모든 프레임이 차있어서 할당 실패시
@@ -218,9 +215,9 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-
-	// check_address(addr);
-	page = spt_find_page (spt, addr);
+	if (not_present) {
+		page = spt_find_page (spt, addr);
+	}
 
 	return vm_do_claim_page (page);
 }
@@ -239,8 +236,9 @@ vm_claim_page (void *va UNUSED) {
 	struct page *page;
 	/* TODO: Fill this function */
 	// page = palloc_get_page(PAL_USER);
-	page = malloc (sizeof (struct page));
-	page->va = pg_round_down(va);
+	// page = calloc (1, sizeof (struct page));
+	// page->va = pg_round_down(va);
+	page = spt_find_page (&thread_current ()->spt, pg_round_down (va));
 	return vm_do_claim_page (page);
 }
 
@@ -254,9 +252,10 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	spt_insert_page (&thread_current ()->spt, page);
+	// spt_insert_page (&thread_current ()->spt, page);
+	pml4_set_page (thread_current ()->pml4, page->va, frame->kva, page->writable);
 
-	return swap_in (page, frame->kva);
+	return swap_in (page, frame->kva);		// uninit_initialize (page, frame->kva)
 }
 
 /* Returns a hash value for page p. */
@@ -293,5 +292,9 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+	
+	hash_clear (&spt->hash_table, NULL);
 
 }
+
+// void spt_destruction_func ();

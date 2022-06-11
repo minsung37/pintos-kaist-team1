@@ -22,6 +22,7 @@ static const struct page_operations uninit_ops = {
 	.type = VM_UNINIT,
 };
 
+// uninit_new (newpage, pg_round_down(upage), lazy_load_segment, type, file_info, anon_initialize);
 /* DO NOT MODIFY this function */
 void
 uninit_new (struct page *page, void *va, vm_initializer *init,
@@ -59,8 +60,10 @@ uninit_initialize(struct page *page, void *kva)
 	 * The template code first fetches vm_initializer and aux 
 	 * and calls the corresponding page_initializer through a function pointer.
 	 * You may need to modify the function depending on your design. */
+
+	
 	return uninit->page_initializer(page, uninit->type, kva) &&
-				 (init ? init(page, aux) : true);
+				 (init ? init(page, aux) : true);		// = anon_initialize(page, uninit->type, kva) && lazy_load_segment (page, aux);
 }
 
 
@@ -73,4 +76,5 @@ uninit_destroy (struct page *page) {
 	struct uninit_page *uninit UNUSED = &page->uninit;
 	/* TODO: Fill this function.
 	 * TODO: If you don't have anything to do, just return. */
+	return;
 }

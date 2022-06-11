@@ -139,10 +139,11 @@ page_fault (struct intr_frame *f) {
 	not_present = (f->error_code & PF_P) == 0;
 	write = (f->error_code & PF_W) != 0;
 	user = (f->error_code & PF_U) != 0;
-	// Stack pointer(%esp)가 가리키는 주소에서 Page fault가 발생할 경우,
-	// exit(-1) 시스템 콜을 호출 하도록 수정
-	// Page fault의 관한 자세한 내용은 project 3에서 다룬다.
-	// exit(-1);
+
+// #ifdef USERPROG
+// 	exit(-1);
+// #endif
+
 #ifdef VM
 	/* For project 3 and later. */
 	if (vm_try_handle_fault (f, fault_addr, user, write, not_present))
@@ -158,6 +159,5 @@ page_fault (struct intr_frame *f) {
 			not_present ? "not present" : "rights violation",
 			write ? "writing" : "reading",
 			user ? "user" : "kernel");
-	// kill (f);
-	exit(-1);
+	kill (f);
 }

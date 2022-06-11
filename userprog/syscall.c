@@ -13,6 +13,9 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 
+/* VM */
+#include "vm/vm.h"
+
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
 
@@ -34,6 +37,12 @@ void check_address(void *addr)
 	struct thread *cur = thread_current();
 	if (addr == NULL || is_kernel_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL)
 		exit(-1);
+	
+	// struct page *p = spt_find_page(thread_current ()->spt, addr);
+	// if (p == NULL) {
+	// 	exit(-1);
+	// }
+	// return p;
 }
 
 void syscall_init(void)

@@ -7,6 +7,7 @@ vm/vm.o: ../../vm/vm.c ../../include/threads/malloc.h \
  ../../include/vm/uninit.h ../../include/vm/anon.h \
  ../../include/vm/file.h ../../include/filesys/file.h \
  ../../include/filesys/off_t.h ../../include/lib/kernel/hash.h \
- ../../include/lib/kernel/list.h ../../include/vm/inspect.h \
- ../../include/devices/timer.h ../../include/lib/round.h \
- ../../include/threads/vaddr.h ../../include/threads/loader.h
+ ../../include/lib/kernel/list.h ../../include/threads/mmu.h \
+ ../../include/threads/pte.h ../../include/threads/vaddr.h \
+ ../../include/threads/loader.h ../../include/vm/inspect.h \
+ ../../include/devices/timer.h ../../include/lib/round.h

@@ -22,6 +22,7 @@
 
 #ifdef VM
 #include "vm/vm.h"
+#include "hash.h"
 #endif
 
 static void process_cleanup(void);
@@ -216,7 +217,6 @@ int process_exec(void *f_name)
 
 	/* And then load the binary */
 	success = load(file_name, &_if);
-
 	/* If load failed, quit. */
 	// palloc_free_page(file_name);
 	if (!success)
@@ -415,6 +415,7 @@ load(const char *file_name, struct intr_frame *if_)
 	lock_acquire(&filesys_lock);
 	/* Open executable file. */
 	file = filesys_open(argv[0]);
+	
 	if (file == NULL)
 	{
 		lock_release(&filesys_lock);
@@ -504,7 +505,6 @@ load(const char *file_name, struct intr_frame *if_)
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
 
 	argument_stack(argv, argc, if_);
-
 	success = true;
 
 done:
@@ -730,14 +730,18 @@ lazy_load_segment(struct page *page, struct file_info *aux)
 	printf("lazy load!!!!!!!!\n");
 	page->run_file = aux->file;
 	page->ofs = aux->ofs;
-	page->file_size = aux->file_size;
+	// page->file_size = aux->file_size;
 	page->read_bytes = aux->read_bytes;
 	page->zero_bytes = aux->zero_bytes;
+	printf("lazy load!!!!!!!!\n");
 
 	if (file_read_at (page->run_file, page->frame->kva, page->read_bytes, page->ofs) != page->read_bytes) {
 		return false;
 	}
-	memset(page->ofs + page->read_bytes, 0, page->zero_bytes);
+	memset(page->frame->kva + page->read_bytes, 0, page->zero_bytes);
+	printf("lazy load!!!!!!!!\n");
+	exit(-1);
+
 	return true;
 
 }
@@ -765,7 +769,6 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT(ofs % PGSIZE == 0);
 
 	struct file_info file_info;
-
 	file_seek(file, ofs);
 	while (read_bytes > 0 || zero_bytes > 0)
 	{
@@ -778,10 +781,9 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
 		file_info.file = file;
 		file_info.ofs = ofs;
-		file_info.file_size = file_length (file);
+		// file_info.file_size = file_length (file);
 		file_info.read_bytes = page_read_bytes;
 		file_info.zero_bytes = page_zero_bytes;
-		// 2022 뇌피셜
 
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
 											writable, lazy_load_segment, &file_info))
@@ -806,10 +808,31 @@ setup_stack(struct intr_frame *if_)
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
-	if (success = vm_alloc_page_with_initializer(VM_MARKER_0, stack_bottom, 
-												 false, NULL, NULL)) {
+	if (success = vm_alloc_page(VM_ANON | VM_STACK, stack_bottom, true)) {
 		if_->rsp = USER_STACK;
 	}
+
 	return success;
+	// // if (success = vm_claim_page(stack_bottom)) {
+	// // 	struct page *stack_page = spt_find_page(&thread_current ()->spt, stack_bottom);
+	// // 	stack_page->type = VM_STACK;
+	// // 	if_->rsp = stack_bottom;
+	// // }
+	// return success;
+	// void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
+	// bool success = false;
+
+	// if (success = vm_do_claim_page(stack_bottom)) {
+		
+	// }
+	// if (pa != NULL)
+	// {
+	// 	success = 
+	// 	if (success)
+	// 		if_->rsp = USER_STACK;
+			
+	// 	else
+	// 		palloc_free_page(kpage);
+	// }
 }
 #endif /* VM */
