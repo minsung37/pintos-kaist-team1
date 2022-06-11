@@ -74,23 +74,21 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		 * TODO: should modify the field after calling the uninit_new. */
 
 		struct page *newpage = (struct page *) calloc (1, sizeof (struct page));
-		bool *initializer;
-
-		newpage->writable = writable;
 
 		switch (VM_TYPE(type)) {
 			case VM_ANON:
-				initializer = &anon_initializer;
+				uninit_new (newpage, upage, init, type, aux, anon_initializer);
 				break;
 			case VM_FILE:
-				initializer = &file_backed_initializer;
+				uninit_new (newpage, upage, init, type, aux, file_backed_initializer);
 				break;
 			default:
 				goto err;
 		}
 
-		uninit_new (newpage, upage, init, type, aux, initializer);
 		/* TODO: Insert the page into the spt. */
+
+		newpage->writable = writable;
 
 		if (!spt_insert_page (spt, newpage)) {
 			goto err;
@@ -105,11 +103,11 @@ err:
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page *page;
+	struct page p;
 	struct hash_elem *e;
 	/* TODO: Fill this function. */
-  	page->va = pg_round_down(va);
-  	e = hash_find (&spt->hash_table, &page->h_elem);
+  	p.va = pg_round_down(va);
+  	e = hash_find (&spt->hash_table, &p.h_elem);
   	return e != NULL ? hash_entry (e, struct page, h_elem) : NULL;
 }
 
@@ -245,6 +243,11 @@ vm_claim_page (void *va UNUSED) {
 /* Claim the PAGE and set up the mmu. */
 static bool
 vm_do_claim_page (struct page *page) {
+
+	if (page == NULL) {
+		return false;
+	}
+	
 	struct frame *frame = vm_get_frame ();
 
 	/* Set links */

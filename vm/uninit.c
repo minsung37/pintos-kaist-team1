@@ -41,6 +41,7 @@ uninit_new (struct page *page, void *va, vm_initializer *init,
 			.page_initializer = initializer,
 		}
 	};
+
 }
 
 /* Initalize the page on first fault */
@@ -61,7 +62,6 @@ uninit_initialize(struct page *page, void *kva)
 	 * and calls the corresponding page_initializer through a function pointer.
 	 * You may need to modify the function depending on your design. */
 
-	
 	return uninit->page_initializer(page, uninit->type, kva) &&
 				 (init ? init(page, aux) : true);		// = anon_initialize(page, uninit->type, kva) && lazy_load_segment (page, aux);
 }

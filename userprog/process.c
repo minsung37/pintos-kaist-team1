@@ -25,6 +25,9 @@
 #include "hash.h"
 #endif
 
+
+typedef int off_t;
+
 static void process_cleanup(void);
 static bool load(const char *file_name, struct intr_frame *if_);
 static void initd(void *f_name);
@@ -322,6 +325,29 @@ void process_activate(struct thread *next)
 	tss_update(next);
 }
 
+
+struct thread *get_child_process(int pid)
+{
+	struct list child_list = thread_current()->child_list;
+	struct list_elem *e = list_begin(&child_list);
+
+	while (e != list_end(&child_list))
+	{
+		struct thread *t = list_entry(e, struct thread, c_elem);
+		if (t == NULL || t->magic != 0xcd6abf4b)
+		{
+			return NULL;
+		}
+		if (t->tid == pid)
+		{
+			return t;
+		}
+		e = list_next(e);
+	}
+	return NULL;
+}
+
+
 /* We load ELF binaries.  The following definitions are taken
  * from the ELF specification, [ELF1], more-or-less verbatim.  */
 
@@ -505,51 +531,29 @@ load(const char *file_name, struct intr_frame *if_)
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
 
 	argument_stack(argv, argc, if_);
+	// hex_dump(if_->rsp, if_->rsp, USER_STACK - if_->rsp, true);
 	success = true;
-
 done:
 	/* We arrive here whether the load is successful or not. */
 	return success;
 }
 
-struct thread *get_child_process(int pid)
-{
-	struct list child_list = thread_current()->child_list;
-	struct list_elem *e = list_begin(&child_list);
-
-	while (e != list_end(&child_list))
-	{
-		struct thread *t = list_entry(e, struct thread, c_elem);
-		if (t == NULL || t->magic != 0xcd6abf4b)
-		{
-			return NULL;
-		}
-		if (t->tid == pid)
-		{
-			return t;
-		}
-		e = list_next(e);
-	}
-	return NULL;
-}
-
 void argument_stack(char **arg, int count, struct intr_frame *if_)
 {
 	int i;
-	for (i = count - 1; i > -1; i--)
-	{
+	for (i = count - 1; i > -1; i--) {
 		if_->rsp -= (strlen(arg[i]) + 1);
 		memcpy(if_->rsp, arg[i], strlen(arg[i]) + 1);
 		arg[i] = if_->rsp;
 	}
+
 	memset(if_->rsp & ~7, 0, if_->rsp - (if_->rsp & ~7));
 	if_->rsp &= ~7;
 
 	if_->rsp -= 8;
 	memset(if_->rsp, 0, sizeof(char *));
 
-	for (i = count - 1; i > -1; i--)
-	{
+	for (i = count - 1; i > -1; i--) {
 		if_->rsp -= 8;
 		memcpy(if_->rsp, &arg[i], sizeof(char *));
 	}
@@ -722,28 +726,19 @@ install_page(void *upage, void *kpage, bool writable)
  * Using this information, you have to find the file to read the segment from 
  * and eventually read the segment into memory. */
 static bool
-lazy_load_segment(struct page *page, struct file_info *aux)
-{
+lazy_load_segment (struct page *page, struct file_info *aux) {
+	
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
-	printf("lazy load!!!!!!!!\n");
-	page->run_file = aux->file;
-	page->ofs = aux->ofs;
-	// page->file_size = aux->file_size;
-	page->read_bytes = aux->read_bytes;
-	page->zero_bytes = aux->zero_bytes;
-	printf("lazy load!!!!!!!!\n");
 
-	if (file_read_at (page->run_file, page->frame->kva, page->read_bytes, page->ofs) != page->read_bytes) {
+	if (file_read_at(aux->file, page->frame->kva, aux->read_bytes, aux->ofs) != (int) aux->read_bytes) {
+    palloc_free_page (page);
 		return false;
 	}
-	memset(page->frame->kva + page->read_bytes, 0, page->zero_bytes);
-	printf("lazy load!!!!!!!!\n");
-	exit(-1);
+	memset (page->frame->kva + aux->read_bytes, 0, aux->zero_bytes);
 
-	return true;
-
+  return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -761,37 +756,35 @@ lazy_load_segment(struct page *page, struct file_info *aux)
  * Return true if successful, false if a memory allocation error
  * or disk read error occurs. */
 static bool
-load_segment(struct file *file, off_t ofs, uint8_t *upage,
-			 uint32_t read_bytes, uint32_t zero_bytes, bool writable)
-{
-	ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
-	ASSERT(pg_ofs(upage) == 0);
-	ASSERT(ofs % PGSIZE == 0);
+load_segment (struct file *file, off_t ofs, uint8_t *upage,
+		uint32_t read_bytes, uint32_t zero_bytes, bool writable) {
+	ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
+	ASSERT (pg_ofs (upage) == 0);
+	ASSERT (ofs % PGSIZE == 0);
 
-	struct file_info file_info;
-	file_seek(file, ofs);
-	while (read_bytes > 0 || zero_bytes > 0)
-	{
+	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
 		 * and zero the final PAGE_ZERO_BYTES bytes. */
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
-
+    // printf("prb: %d pzb: %d upage: %u\n", page_read_bytes, page_zero_bytes, upage);
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		file_info.file = file;
-		file_info.ofs = ofs;
-		// file_info.file_size = file_length (file);
-		file_info.read_bytes = page_read_bytes;
-		file_info.zero_bytes = page_zero_bytes;
+		// * 연어: 없어보임 -> 있어보여짐 -> writable upage 왜 넣지? 이상
+		struct file_info *aux = (struct file_info*)malloc(sizeof(struct file_info));
+		aux->file = file;
+		aux->read_bytes = page_read_bytes; // * 혜진
+		aux->zero_bytes = page_zero_bytes;
 
-		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
-											writable, lazy_load_segment, &file_info))
+    aux->ofs = ofs;
+
+		if (!vm_alloc_page_with_initializer (VM_ANON, upage, writable, lazy_load_segment, aux))
 			return false;
 
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
+    ofs += page_read_bytes;
 		upage += PGSIZE;
 	}
 	return true;
@@ -799,40 +792,17 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
 static bool
-setup_stack(struct intr_frame *if_)
-{
+setup_stack (struct intr_frame *if_) {
 	bool success = false;
-	void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
+	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
 
-	/* TODO: Map the stack on stack_bottom and claim the page immediately.
+	/* TODO: Map the stak on stack_bottom and claim the page immediately.
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
-	if (success = vm_alloc_page(VM_ANON | VM_STACK, stack_bottom, true)) {
-		if_->rsp = USER_STACK;
-	}
 
+	success = vm_alloc_page_with_initializer (VM_ANON||VM_STACK, stack_bottom, true, NULL, NULL);
+  if_->rsp = USER_STACK;
 	return success;
-	// // if (success = vm_claim_page(stack_bottom)) {
-	// // 	struct page *stack_page = spt_find_page(&thread_current ()->spt, stack_bottom);
-	// // 	stack_page->type = VM_STACK;
-	// // 	if_->rsp = stack_bottom;
-	// // }
-	// return success;
-	// void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
-	// bool success = false;
-
-	// if (success = vm_do_claim_page(stack_bottom)) {
-		
-	// }
-	// if (pa != NULL)
-	// {
-	// 	success = 
-	// 	if (success)
-	// 		if_->rsp = USER_STACK;
-			
-	// 	else
-	// 		palloc_free_page(kpage);
-	// }
 }
 #endif /* VM */

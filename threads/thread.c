@@ -362,7 +362,7 @@ void thread_set_priority(int new_priority)
 
 void test_max_priority(void)
 {
-
+	struct thread *current = thread_current ();
 	if (!list_empty(&ready_list))
 	{
 		if (cmp_priority(list_begin(&ready_list), &thread_current()->elem, NULL))
@@ -375,7 +375,7 @@ bool cmp_priority(const struct list_elem *a_, const struct list_elem *b_, void *
 	struct thread *thread_a = list_entry(a_, struct thread, elem);
 	struct thread *thread_b = list_entry(b_, struct thread, elem);
 
-	return thread_a->priority > thread_b->priority ? 1 : 0;
+	return thread_a->priority > thread_b->priority;
 }
 
 bool cmp_donate_priority(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
@@ -383,7 +383,7 @@ bool cmp_donate_priority(const struct list_elem *a_, const struct list_elem *b_,
 	struct thread *thread_a = list_entry(a_, struct thread, d_elem);
 	struct thread *thread_b = list_entry(b_, struct thread, d_elem);
 
-	return thread_a->priority > thread_b->priority ? 1 : 0;
+	return thread_a->priority > thread_b->priority;
 }
 
 /* Returns the current thread's priority. */
