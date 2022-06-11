@@ -1,14 +1,14 @@
 FAIL
 Kernel panic in run: PANIC at ../../userprog/exception.c:96 in kill(): Kernel bug - unexpected interrupt in kernel
-Call stack: 0x8004218659 0x800421d222 0x800421d3cf 0x8004209641 0x8004209a5f 0x800421d751 0x800421d446 0x400111 0x40021d 0x400cbe
+Call stack: 0x8004218659 0x800421d29c 0x800421d449 0x8004209641 0x8004209a5f 0x800421d7cb 0x800421d4c0 0x400111 0x40021d 0x400cbe
 Translation of call stack:
 0x0000008004218659: debug_panic (lib/kernel/debug.c:32)
-0x000000800421d222: kill (userprog/exception.c:102)
-0x000000800421d3cf: page_fault (userprog/exception.c:163 (discriminator 12))
+0x000000800421d29c: kill (userprog/exception.c:102)
+0x000000800421d449: page_fault (userprog/exception.c:163 (discriminator 12))
 0x0000008004209641: intr_handler (threads/interrupt.c:352)
 0x0000008004209a5f: intr_entry (threads/intr-stubs.o:?)
-0x000000800421d751: syscall_handler (userprog/syscall.c:96)
-0x000000800421d446: no_sti (userprog/syscall-entry.o:?)
+0x000000800421d7cb: syscall_handler (userprog/syscall.c:96)
+0x000000800421d4c0: no_sti (userprog/syscall-entry.o:?)
 0x0000000000400111: (unknown)
 0x000000000040021d: (unknown)
 0x0000000000400cbe: (unknown)

@@ -26,7 +26,7 @@ r15 0000800420adc300 rflags 00000202
 es: 001b ds: 001b cs: 0023 ss: 001b
 Execution of 'pt-grow-stk-sc' complete.
 Timer: 64 ticks
-Thread: 30 idle ticks, 28 kernel ticks, 6 user ticks
+Thread: 30 idle ticks, 30 kernel ticks, 5 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 83 reads, 242 writes
 hd1:0: 107 reads, 0 writes
