@@ -52,14 +52,14 @@ struct page {
 	/* Your implementation */
 	/* ------------------ project3 -------------------- */
 
-	struct file *run_file;
+	// struct file *run_file;
 
 	enum vm_type type;
 
-	off_t ofs;
-	int file_size;
-	size_t read_bytes; 
-	size_t zero_bytes;
+	// off_t ofs;
+	// int file_size;
+	// size_t read_bytes; 
+	// size_t zero_bytes;
 	bool writable;
 	
 	struct hash_elem h_elem;

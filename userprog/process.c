@@ -729,17 +729,20 @@ lazy_load_segment(struct page *page, struct file_info *aux)
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
-	page->run_file = aux->file;
-	page->ofs = aux->ofs;
-	page->file_size = aux->file_size;
-	page->read_bytes = aux->read_bytes;
-	page->zero_bytes = aux->zero_bytes;
+	// page->run_file = aux->file;
+	// page->ofs = aux->ofs;
+	// page->file_size = aux->file_size;
+	// page->read_bytes = aux->read_bytes;
+	// page->zero_bytes = aux->zero_bytes;
 
-	if (file_read_at (page->run_file, page->frame->kva, page->read_bytes, page->ofs) != page->read_bytes) {
+	if (file_read_at (aux->file, page->frame->kva, aux->read_bytes, aux->ofs) != aux->read_bytes) {
 		vm_dealloc_page (page);
+		free (aux);
+		
 		return false;
 	}
-	memset (page->frame->kva + page->read_bytes, 0, page->zero_bytes);
+	memset (page->frame->kva + aux->read_bytes, 0, aux->zero_bytes);
+	free (aux);
 
 	return true;
 
@@ -767,8 +770,6 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT(pg_ofs(upage) == 0);
 	ASSERT(ofs % PGSIZE == 0);
 
-	int file_size = file_length (file);
-
 	while (read_bytes > 0 || zero_bytes > 0)
 	{
 		/* Do calculate how to fill this page.
@@ -782,7 +783,6 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
 		f_info->file = file;
 		f_info->ofs = ofs;
-		f_info->file_size = file_size;
 		f_info->read_bytes = page_read_bytes;
 		f_info->zero_bytes = page_zero_bytes;
 
