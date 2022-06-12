@@ -548,11 +548,11 @@ void argument_stack(char **arg, int count, struct intr_frame *if_)
 	memset(if_->rsp & ~7, 0, if_->rsp - (if_->rsp & ~7));
 	if_->rsp &= ~7;
 
-	if_->rsp -= 8;
+	if_->rsp -= sizeof(char *);
 	memset(if_->rsp, 0, sizeof(char *));
 
 	for (i = count - 1; i > -1; i--) {
-		if_->rsp -= 8;
+		if_->rsp -= sizeof(char *);
 		memcpy(if_->rsp, &arg[i], sizeof(char *));
 	}
 
@@ -560,7 +560,7 @@ void argument_stack(char **arg, int count, struct intr_frame *if_)
 	if_->R.rsi = if_->rsp;
 
 	/* return address */
-	if_->rsp -= 8;
+	if_->rsp -= sizeof(void (*)());
 	memset(if_->rsp, 0, sizeof(void (*)()));
 }
 
@@ -738,7 +738,7 @@ lazy_load_segment(struct page *page, struct file_info *aux)
 	if (file_read_at (aux->file, page->frame->kva, aux->read_bytes, aux->ofs) != aux->read_bytes) {
 		vm_dealloc_page (page);
 		free (aux);
-		
+
 		return false;
 	}
 	memset (page->frame->kva + aux->read_bytes, 0, aux->zero_bytes);

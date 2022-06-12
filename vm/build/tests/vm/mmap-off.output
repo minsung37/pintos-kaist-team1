@@ -15,24 +15,15 @@ Putting 'mmap-off' into the file system...
 Putting 'large.txt' into the file system...
 Executing 'mmap-off':
 (mmap-off) begin
-Page fault at 0x4747ef78: not present error writing page in user context.
-mmap-off: dying due to interrupt 0x0e (#PF Page-Fault Exception).
-Interrupt 0x0e (#PF Page-Fault Exception) at rip=40010c
- cr2=000000004747ef78 error=               6
-rax 0000000000000000 rbx 0000800424407800 rcx 00000000000000ff rdx 0000000000400646
-rsp 000000004747ef80 rbp 000000004747ff90 rsi 00000000007ef56e rdi 00000000004046f0
-rip 000000000040010c r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
-r11 0000000000000206 r12 00008004244f1800 r13 0000800422add000 r14 00008004242f1000
-r15 0000800420adc300 rflags 00000202
-es: 001b ds: 001b cs: 0023 ss: 001b
+mmap-off: exit(-1)
 Execution of 'mmap-off' complete.
-Timer: 244 ticks
-Thread: 30 idle ticks, 209 kernel ticks, 6 user ticks
+Timer: 243 ticks
+Thread: 30 idle ticks, 211 kernel ticks, 2 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 108 reads, 15904 writes
 hd1:0: 7933 reads, 0 writes
 hd1:1: 0 reads, 0 writes
-Console: 1620 characters output
+Console: 990 characters output
 Keyboard: 0 keys pressed
 Exception: 1 page faults
 Powering off...

@@ -14,24 +14,15 @@ Boot complete.
 Putting 'pt-write-code' into the file system...
 Executing 'pt-write-code':
 (pt-write-code) begin
-Page fault at 0x4000e8: rights violation error writing page in user context.
-pt-write-code: dying due to interrupt 0x0e (#PF Page-Fault Exception).
-Interrupt 0x0e (#PF Page-Fault Exception) at rip=4000f6
- cr2=00000000004000e8 error=               7
-rax 00000000004000e8 rbx 0000800424407800 rcx 00000000000000ff rdx 0000000000000000
-rsp 000000004747ff90 rbp 000000004747ff90 rsi 000000000060508e rdi 000000000060517f
-rip 00000000004000f6 r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
-r11 0000000000000206 r12 00008004244f1800 r13 0000800422add000 r14 00008004242f1000
-r15 0000800420adc300 rflags 00000212
-es: 001b ds: 001b cs: 0023 ss: 001b
+pt-write-code: exit(-1)
 Execution of 'pt-write-code' complete.
-Timer: 64 ticks
-Thread: 30 idle ticks, 28 kernel ticks, 6 user ticks
+Timer: 60 ticks
+Thread: 30 idle ticks, 28 kernel ticks, 2 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 80 reads, 232 writes
 hd1:0: 102 reads, 0 writes
 hd1:1: 0 reads, 0 writes
-Console: 1593 characters output
+Console: 960 characters output
 Keyboard: 0 keys pressed
 Exception: 1 page faults
 Powering off...

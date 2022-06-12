@@ -219,6 +219,7 @@ read(int fd, void *buffer, unsigned length) {
 		lock_acquire(&filesys_lock);
 		bytes_read = input_getc();
 		lock_release(&filesys_lock);
+
 		return bytes_read;
 	}
 	else if (fd >= 2) {
