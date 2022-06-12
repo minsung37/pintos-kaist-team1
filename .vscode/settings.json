@@ -7,5 +7,6 @@
         "*.inc": "c",
         "list.h": "c",
         "vm.h": "c"
-    }
+    },
+    "C_Cpp.dimInactiveRegions": false
 }

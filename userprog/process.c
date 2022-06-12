@@ -736,7 +736,7 @@ lazy_load_segment(struct page *page, struct file_info *aux)
 	page->zero_bytes = aux->zero_bytes;
 
 	if (file_read_at (page->run_file, page->frame->kva, page->read_bytes, page->ofs) != page->read_bytes) {
-		palloc_free_page (page);
+		vm_dealloc_page (page);
 		return false;
 	}
 	memset (page->frame->kva + page->read_bytes, 0, page->zero_bytes);

@@ -8,11 +8,13 @@
 #include "vm/inspect.h"
 #include "hash.h"
 #include "devices/timer.h"
+#include <string.h>
 
 /* ------------------ project3 -------------------- */
 static struct list frame_table;
 /* ------------------------------------------------ */
 
+#define MAX_STACK_SIZE (1 << 20)
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -89,7 +91,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* TODO: Insert the page into the spt. */
 
 		newpage->writable = writable;
-
 		if (!spt_insert_page (spt, newpage)) {
 			goto err;
 		}
@@ -198,6 +199,10 @@ vm_get_frame (void) {
 /* Growing the stack. */
 static void
 vm_stack_growth (void *addr UNUSED) {
+	// addr = pg_round_down(addr);
+	// printf("new stack addr: %p\n", addr);
+
+	// vm_alloc_page (VM_ANON || VM_STACK, addr, true);
 }
 
 /* Handle the fault on write_protected page */
@@ -209,12 +214,23 @@ vm_handle_wp (struct page *page UNUSED) {
 bool
 vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
-	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
+	
+	struct thread *current = thread_current ();
+	struct supplemental_page_table *spt UNUSED = &current->spt;
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
+		// printf("min %p, cur_rsp %p, max %p\n", USER_STACK - MAX_STACK_SIZE, current->rsp, USER_STACK - PGSIZE);
+
+
 	if (not_present) {
 		page = spt_find_page (spt, addr);
+		// if (page != NULL) {
+		// 	printf("min %p, cur_rsp %p, max %p\n", USER_STACK - MAX_STACK_SIZE, current->rsp, USER_STACK - PGSIZE);
+		// 	if ((USER_STACK - MAX_STACK_SIZE < current->rsp) && (current->rsp < USER_STACK - PGSIZE)) {
+		// 		vm_stack_growth (current->rsp);
+		// 	}
+		// }
 	}
 
 	return vm_do_claim_page (page);
@@ -288,6 +304,21 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
+	
+	// int i;
+
+	// for (i = 0; i < src->hash_table.bucket_cnt; i++) {
+	// 	struct list *bucket = &src->hash_table.buckets[i];
+	// 	struct list_elem *elem, *next;
+
+	// 	for (elem = list_begin (bucket); elem != list_end (bucket); elem = next) {
+	// 		next = list_next (elem);
+	// 		struct hash_elem *h_elem = list_entry(elem, struct hash_elem, list_elem);
+	// 		struct page *p = hash_entry(h_elem, struct page, h_elem);
+
+	// 		vm_alloc_page (VM_ANON, p->va, p->writable);
+	// 	}
+	// }
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -296,8 +327,22 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
 	
-	hash_clear (&spt->hash_table, NULL);
+	// int i;
 
+	// for (i = 0; i < spt->hash_table.bucket_cnt; i++) {
+	// 	struct list *bucket = &spt->hash_table.buckets[i];
+	// 	struct list_elem *elem, *next;
+
+	// 	for (elem = list_begin (bucket); elem != list_end (bucket); elem = next) {
+	// 		next = list_next (elem);
+	// 		struct hash_elem *h_elem = list_entry(elem, struct hash_elem, list_elem);
+	// 		struct page *p = hash_entry(h_elem, struct page, h_elem);
+
+	// 		destroy(p);
+	// 	}
+	// }
+	//하면 에러남???
+	hash_clear (&spt->hash_table, NULL);
+	// hash_destroy (&spt->hash_table, NULL);
 }
 
-// void spt_destruction_func ();

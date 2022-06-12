@@ -115,6 +115,8 @@ struct  thread {
 	struct intr_frame tf;               /* Information for switching */
 	struct intr_frame temp_tf;
 
+	uint64_t rsp;						/* saving rsp on the INITIAL transition from user to kernel mode */
+
 	unsigned magic;                     /* Detects stack overflow. */
 
 	int64_t wakeup_tick; 					/* what tick to wake up */

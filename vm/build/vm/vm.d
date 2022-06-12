@@ -10,4 +10,5 @@ vm/vm.o: ../../vm/vm.c ../../include/threads/malloc.h \
  ../../include/lib/kernel/list.h ../../include/threads/mmu.h \
  ../../include/threads/pte.h ../../include/threads/vaddr.h \
  ../../include/threads/loader.h ../../include/vm/inspect.h \
- ../../include/devices/timer.h ../../include/lib/round.h
+ ../../include/devices/timer.h ../../include/lib/round.h \
+ ../../include/lib/string.h

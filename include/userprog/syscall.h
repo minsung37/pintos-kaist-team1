@@ -10,6 +10,7 @@ struct lock filesys_lock;
 void syscall_init (void);
 
 void check_address(void *addr);
+void check_valid_buffer(void *buffer, unsigned length, bool writable);
 
 void halt(void);
 void exit(int status);

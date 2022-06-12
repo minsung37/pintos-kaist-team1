@@ -32,21 +32,38 @@ void syscall_handler(struct intr_frame *);
 #define MSR_LSTAR 0xc0000082		/* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
 
-void check_address(void *addr)
-{
-	struct thread *cur = thread_current();
-	if (addr == NULL || is_kernel_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL)
+void 
+check_address(void *addr) {
+	if (addr == NULL || is_kernel_vaddr(addr))
 		exit(-1);
 	
-	// struct page *p = spt_find_page(thread_current ()->spt, addr);
-	// if (p == NULL) {
-	// 	exit(-1);
-	// }
-	// return p;
+	struct page *p = spt_find_page (&thread_current ()->spt, addr);
+	if (p == NULL) {
+		exit(-1);
+	}
 }
 
-void syscall_init(void)
-{
+void 
+check_valid_buffer(void *buffer, unsigned length, bool writable) {
+
+	int va;
+	va = pg_round_down(buffer);
+	// >= ????
+	while (length > 0) {
+		struct page *p = spt_find_page (&thread_current ()->spt, (void *)(va));
+		if (p == NULL) {
+			exit(-1);
+		}
+		if (p->writable != writable) {
+			exit(-1);
+		}
+		length -= PGSIZE;
+		va += PGSIZE;
+	}
+}
+
+void 
+syscall_init(void) {
 
 	lock_init(&filesys_lock);
 
@@ -61,10 +78,11 @@ void syscall_init(void)
 			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 }
 
-void syscall_handler(struct intr_frame *f UNUSED)
-{
+void 
+syscall_handler(struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
-
+	thread_current ()->rsp = f->rsp;
+	// printf("syscall rsp: %p\n", thread_current ()->rsp);
 	switch (f->R.rax)
 	{
 	case SYS_HALT:
@@ -116,67 +134,64 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	}
 }
 
-void halt(void)
-{
+void 
+halt(void) {
 	power_off();
 }
 
-void exit(int status)
-{
+void 
+exit(int status) {
 	struct thread *cur = thread_current();
 	cur->exit_code = status;
 	printf("%s: exit(%d)\n", cur->name, status);
 	thread_exit();
 }
 
-int fork(const char *thread_name)
-{
+int 
+fork(const char *thread_name) {
 	check_address(thread_name);
 	return process_fork(thread_name, &thread_current()->temp_tf);
 }
 
-int exec(const char *file)
-{
+int 
+exec(const char *file) {
 	check_address(file);
 
 	char *fn_copy[64];
 
 	memcpy(fn_copy, file, strlen(file) + 1);
-	if (process_exec(fn_copy) == -1)
-	{
+	if (process_exec(fn_copy) == -1) {
 		exit(-1);
 	}
 }
 
-int wait(tid_t pid)
-{
+int 
+wait(tid_t pid) {
 	return process_wait(pid);
 }
 
-bool create(const char *file, unsigned initial_size)
-{
+bool 
+create(const char *file, unsigned initial_size) {
 	check_address(file);
 	return filesys_create(file, initial_size);
 }
 
-bool remove(const char *file)
-{
+bool 
+remove(const char *file) {
 	check_address(file);
 	return filesys_remove(file);
 }
 
-int open(const char *file)
-{
+int 
+open(const char *file) {
 	check_address(file);
 	struct thread *current = thread_current();
 	int i;
 
-	if (current->next_fd < 128)
-	{
+	if (current->next_fd < 128) {
 		struct file *new_file = filesys_open(file);
 
-		if (new_file != NULL)
-		{
+		if (new_file != NULL) {
 			current->fdt[current->next_fd] = new_file;
 			return current->next_fd++;
 		}
@@ -184,29 +199,29 @@ int open(const char *file)
 	return -1;
 }
 
-int filesize(int fd)
-{
+int 
+filesize(int fd) {
 	struct file *file = thread_current()->fdt[fd];
 	if (file == NULL)
 		return -1;
 	return file_length(file);
 }
 
-int read(int fd, void *buffer, unsigned length)
-{
+int 
+read(int fd, void *buffer, unsigned length) {
 	check_address(buffer);
+	// check_valid_buffer(buffer, length, true || false);
+
 	struct thread *curr = thread_current();
 	int bytes_read;
 
-	if (fd == 0)
-	{
+	if (fd == 0) {
 		lock_acquire(&filesys_lock);
 		bytes_read = input_getc();
 		lock_release(&filesys_lock);
 		return bytes_read;
 	}
-	else if (fd >= 2)
-	{
+	else if (fd >= 2) {
 		lock_acquire(&filesys_lock);
 		bytes_read = file_read(curr->fdt[fd], buffer, length);
 		lock_release(&filesys_lock);
@@ -216,12 +231,12 @@ int read(int fd, void *buffer, unsigned length)
 	return -1;
 }
 
-int write(int fd, const void *buffer, unsigned length)
-{
+int
+write(int fd, const void *buffer, unsigned length) {
 	check_address(buffer);
+	// check_valid_buffer(buffer, length, true || false);
 
-	if (fd == 1)
-	{
+	if (fd == 1) {
 		lock_acquire(&filesys_lock);
 		putbuf(buffer, length);
 		lock_release(&filesys_lock);
@@ -229,13 +244,11 @@ int write(int fd, const void *buffer, unsigned length)
 		return length;
 	}
 
-	if (fd >= 2)
-	{
+	if (fd >= 2) {
 		lock_acquire(&filesys_lock);
 		struct file *file = thread_current()->fdt[fd];
 
-		if (file != NULL)
-		{
+		if (file != NULL) {
 			int bytes_written = file_write(file, buffer, length);
 			lock_release(&filesys_lock);
 
@@ -248,25 +261,24 @@ int write(int fd, const void *buffer, unsigned length)
 	return -1;
 }
 
-void seek(int fd, unsigned position)
-{
+void 
+seek(int fd, unsigned position) {
 	struct file *file = thread_current()->fdt[fd];
 	if (file != NULL)
 		file_seek(file, position);
 }
 
-unsigned tell(int fd)
-{
+unsigned 
+tell(int fd) {
 	struct file *file = thread_current()->fdt[fd];
 	if (file != NULL)
 		return file_tell(file);
 }
 
-void close(int fd)
-{
+void 
+close(int fd) {
 	struct file *file = thread_current()->fdt[fd];
-	if (file != NULL)
-	{
+	if (file != NULL) {
 		lock_acquire(&filesys_lock);
 		thread_current()->fdt[fd] = NULL;
 		file_close(thread_current()->fdt[fd]);
