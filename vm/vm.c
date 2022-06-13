@@ -219,7 +219,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-		// printf("min %p, cur_rsp %p, max %p\n", USER_STACK - MAX_STACK_SIZE, current->rsp, USER_STACK - PGSIZE);
+	// printf("min %p, cur_rsp %p, max %p\n", USER_STACK - MAX_STACK_SIZE, current->rsp, USER_STACK - PGSIZE);
 
 
 	if (not_present) {
@@ -270,6 +270,7 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
+	// pml4_set_page (uint64_t *pml4, void *upage, void *kpage, bool rw)
 	pml4_set_page (thread_current ()->pml4, page->va, frame->kva, page->writable);
 	// page->valid_bit = true;
 
@@ -303,21 +304,25 @@ bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
     struct supplemental_page_table *src UNUSED) {
   struct hash_iterator i;
+
   hash_first (&i, &src->hash_table);
   while (hash_next (&i)) {
       struct page *p = hash_entry (hash_cur (&i), struct page, h_elem);
       enum vm_type type = page_get_type(p);
-      if(p->operations->type == VM_UNINIT) {
+      if(p->operations->type == VM_UNINIT)
+			{
         if(!vm_alloc_page_with_initializer(type, p->va, p->writable, p->uninit.init, p->uninit.aux))
               return false;
       }
-      else {
+      else
+			{
         if(!vm_alloc_page(type, p->va, p->writable))
           return false;
         if(!vm_claim_page(p->va))
           return false;
 				struct page* new_page = spt_find_page(dst, p->va);
         memcpy(new_page->frame->kva, p->frame->kva, PGSIZE);
+				// new_page->frame->kva = p->frame->kva; 할당이 안됨
       }
   }
   return true;
@@ -329,5 +334,7 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
 	hash_clear (&spt->hash_table, NULL);
+	// free (&spt->hash_table.buckets);
+	// hash_destroy (&spt->hash_table, NULL);
 }
 

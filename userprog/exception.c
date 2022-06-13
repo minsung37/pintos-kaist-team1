@@ -1,5 +1,3 @@
-
-   
 #include "userprog/exception.h"
 #include <inttypes.h>
 #include <stdio.h>
@@ -7,6 +5,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "intrinsic.h"
+#include "vm/vm.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
