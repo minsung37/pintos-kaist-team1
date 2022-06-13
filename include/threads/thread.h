@@ -15,6 +15,8 @@
 #define LOAD_AVG_DEFAULT 0
 
 #define FILE_NUM 128
+#define USERPROG
+#define VM
 
 
 /* States in a thread's life cycle. */

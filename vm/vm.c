@@ -289,7 +289,6 @@ page_less (const struct hash_elem *a_,
            const struct hash_elem *b_, void *aux UNUSED) {
   const struct page *a = hash_entry (a_, struct page, h_elem);
   const struct page *b = hash_entry (b_, struct page, h_elem);
-
   return a->va < b->va;
 }
 
@@ -302,22 +301,26 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 /* Copy supplemental page table from src to dst */
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
-		struct supplemental_page_table *src UNUSED) {
-	
-	// int i;
-
-	// for (i = 0; i < src->hash_table.bucket_cnt; i++) {
-	// 	struct list *bucket = &src->hash_table.buckets[i];
-	// 	struct list_elem *elem, *next;
-
-	// 	for (elem = list_begin (bucket); elem != list_end (bucket); elem = next) {
-	// 		next = list_next (elem);
-	// 		struct hash_elem *h_elem = list_entry(elem, struct hash_elem, list_elem);
-	// 		struct page *p = hash_entry(h_elem, struct page, h_elem);
-
-	// 		vm_alloc_page (VM_ANON, p->va, p->writable);
-	// 	}
-	// }
+    struct supplemental_page_table *src UNUSED) {
+  struct hash_iterator i;
+  hash_first (&i, &src->hash_table);
+  while (hash_next (&i)) {
+      struct page *p = hash_entry (hash_cur (&i), struct page, h_elem);
+      enum vm_type type = page_get_type(p);
+      if(p->operations->type == VM_UNINIT) {
+        if(!vm_alloc_page_with_initializer(type, p->va, p->writable, p->uninit.init, p->uninit.aux))
+              return false;
+      }
+      else {
+        if(!vm_alloc_page(type, p->va, p->writable))
+          return false;
+        if(!vm_claim_page(p->va))
+          return false;
+				struct page* new_page = spt_find_page(dst, p->va);
+        memcpy(new_page->frame->kva, p->frame->kva, PGSIZE);
+      }
+  }
+  return true;
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -325,23 +328,6 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
-	
-	// int i;
-
-	// for (i = 0; i < spt->hash_table.bucket_cnt; i++) {
-	// 	struct list *bucket = &spt->hash_table.buckets[i];
-	// 	struct list_elem *elem, *next;
-
-	// 	for (elem = list_begin (bucket); elem != list_end (bucket); elem = next) {
-	// 		next = list_next (elem);
-	// 		struct hash_elem *h_elem = list_entry(elem, struct hash_elem, list_elem);
-	// 		struct page *p = hash_entry(h_elem, struct page, h_elem);
-
-	// 		destroy(p);
-	// 	}
-	// }
-	//하면 에러남???
 	hash_clear (&spt->hash_table, NULL);
-	// hash_destroy (&spt->hash_table, NULL);
 }
 
