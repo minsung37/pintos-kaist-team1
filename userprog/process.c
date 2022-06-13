@@ -189,12 +189,14 @@ __do_fork(void *aux)
 	}
 	current->next_fd = parent->next_fd;
 
+	
 	sema_up (&current->fork_sema);
 
 	process_init ();
 	/* Finally, switch to the newly created process. */
-	if (succ)
+	if (succ) {
 		do_iret (&if_);
+	}
 error:
 	sema_up (&current->fork_sema);
 	exit (-1);

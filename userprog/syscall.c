@@ -36,13 +36,15 @@ void
 check_address(void *addr) {
 	if (addr == NULL || is_kernel_vaddr(addr))
 		exit(-1);
-	
+#ifdef VM	
 	struct page *p = spt_find_page (&thread_current ()->spt, addr);
 	if (p == NULL) {
 		exit(-1);
 	}
+#endif
 }
 
+#ifdef VM
 void 
 check_valid_buffer(void *buffer, unsigned length, bool writable) {
 
@@ -61,6 +63,7 @@ check_valid_buffer(void *buffer, unsigned length, bool writable) {
 		va += PGSIZE;
 	}
 }
+#endif
 
 void 
 syscall_init(void) {
@@ -150,7 +153,8 @@ exit(int status) {
 int 
 fork(const char *thread_name) {
 	check_address(thread_name);
-	return process_fork(thread_name, &thread_current()->temp_tf);
+	int ret = process_fork(thread_name, &thread_current()->temp_tf);
+	return ret;
 }
 
 int 
@@ -167,7 +171,8 @@ exec(const char *file) {
 
 int 
 wait(tid_t pid) {
-	return process_wait(pid);
+	int ret = process_wait(pid);
+	return ret;
 }
 
 bool 

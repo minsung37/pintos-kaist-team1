@@ -65,9 +65,10 @@ static struct frame *vm_evict_frame (void);
 bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
+		
+	struct supplemental_page_table *spt = &thread_current ()->spt;
 
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
-	struct supplemental_page_table *spt = &thread_current ()->spt;
 
 	/* Check wheter the upage is already occupied or not. */
 	if (spt_find_page (spt, upage) == NULL) {
@@ -76,6 +77,21 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		 * TODO: should modify the field after calling the uninit_new. */
 
 		struct page *newpage = (struct page *) calloc (1, sizeof (struct page));
+		// if ((type) & (VM_FORK)) {
+		// 	struct page *parent_p = (struct page *)aux;
+		// 	struct frame *child_f = (struct frame *) calloc (1, sizeof (struct frame));
+
+		// 	memcpy (newpage, parent_p, sizeof (struct page));
+		// 	memcpy (child_f, parent_p->frame, sizeof (struct frame));
+
+		// 	/* Set links */
+		// 	child_f->page = newpage;
+		// 	newpage->frame = child_f;
+
+		// 	pml4_set_page (thread_current ()->pml4, newpage->va, parent_p->frame->kva, newpage->writable);
+		// 	printf("child_page->frame %p\n", newpage->frame);
+		// 	return true;
+		// }
 
 		switch (VM_TYPE(type)) {
 			case VM_ANON:
@@ -94,6 +110,15 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		if (!spt_insert_page (spt, newpage)) {
 			goto err;
 		}
+
+		// if (type & VM_FORK) {
+		// 	struct page *parent_page = (struct page *)aux;
+		// 	if (vm_do_claim_page(newpage)) {
+		// 		memcpy (newpage->frame->kva, parent_page->frame->kva, PGSIZE);
+		// 	} else {
+		// 		goto err;
+		// 	}
+		// }
 
 		return true;
 	}
@@ -224,6 +249,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 
 	if (not_present) {
 		page = spt_find_page (spt, addr);
+		// printf("thread name %s, page->frame %d\n", thread_name(), page->frame);
 		// if (page != NULL) {
 		// 	printf("min %p, cur_rsp %p, max %p\n", USER_STACK - MAX_STACK_SIZE, current->rsp, USER_STACK - PGSIZE);
 		// 	if ((USER_STACK - MAX_STACK_SIZE < current->rsp) && (current->rsp < USER_STACK - PGSIZE)) {
@@ -304,20 +330,38 @@ bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
 	
-	// int i;
+	int i;
 
-	// for (i = 0; i < src->hash_table.bucket_cnt; i++) {
-	// 	struct list *bucket = &src->hash_table.buckets[i];
-	// 	struct list_elem *elem, *next;
+	for (i = 0; i < src->hash_table.bucket_cnt; i++) {
+		struct list *bucket = &src->hash_table.buckets[i];
+		struct list_elem *elem, *next;
 
-	// 	for (elem = list_begin (bucket); elem != list_end (bucket); elem = next) {
-	// 		next = list_next (elem);
-	// 		struct hash_elem *h_elem = list_entry(elem, struct hash_elem, list_elem);
-	// 		struct page *p = hash_entry(h_elem, struct page, h_elem);
+		for (elem = list_begin (bucket); elem != list_end (bucket); elem = next) {
+			next = list_next (elem);
 
-	// 		vm_alloc_page (VM_ANON, p->va, p->writable);
-	// 	}
-	// }
+			struct hash_elem *h_elem = list_entry(elem, struct hash_elem, list_elem);
+			
+			struct page *parent_p = hash_entry(h_elem, struct page, h_elem);
+			struct page *child_p = (struct page *) calloc (1, sizeof (struct page));
+			
+
+			memcpy (child_p, parent_p, sizeof (struct page));
+
+			/* Set links */
+			if (parent_p->frame->kva != NULL) {
+				struct frame *child_f = vm_get_frame();
+				child_f->page = child_p;
+				child_p->frame = child_f;
+				memcpy (child_f->kva, parent_p->frame->kva, PGSIZE);		/* copy the physical frame */
+
+				/* Set mmu */
+				pml4_set_page (thread_current ()->pml4, child_p->va, child_f->kva, child_p->writable);
+			}
+			/* insert to dst */
+			spt_insert_page (dst, child_p);
+		}
+	}
+	return true;
 }
 
 /* Free the resource hold by the supplemental page table */
