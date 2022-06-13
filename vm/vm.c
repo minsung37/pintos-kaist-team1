@@ -67,6 +67,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
 		
 	struct supplemental_page_table *spt = &thread_current ()->spt;
+	struct page *newpage = (struct page *) calloc (1, sizeof (struct page));
 
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
 
@@ -76,22 +77,34 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
 
-		struct page *newpage = (struct page *) calloc (1, sizeof (struct page));
-		// if ((type) & (VM_FORK)) {
-		// 	struct page *parent_p = (struct page *)aux;
-		// 	struct frame *child_f = (struct frame *) calloc (1, sizeof (struct frame));
+		if (type & VM_FORK) {
 
-		// 	memcpy (newpage, parent_p, sizeof (struct page));
-		// 	memcpy (child_f, parent_p->frame, sizeof (struct frame));
+			struct page *parent_p = (struct page *) aux;
+			struct page *child_p = newpage;
+			
+			memcpy (child_p, parent_p, sizeof (struct page));
 
-		// 	/* Set links */
-		// 	child_f->page = newpage;
-		// 	newpage->frame = child_f;
+			if (parent_p->frame != NULL) {
 
-		// 	pml4_set_page (thread_current ()->pml4, newpage->va, parent_p->frame->kva, newpage->writable);
-		// 	printf("child_page->frame %p\n", newpage->frame);
-		// 	return true;
-		// }
+				struct frame *child_f = vm_get_frame ();
+
+				/* Set links */
+				child_f->page = child_p;
+				child_p->frame = child_f;
+
+				// child_f->kva = parent_p->frame->kva;
+				memcpy (child_f->kva, parent_p->frame->kva, PGSIZE);
+				pml4_set_page (thread_current ()->pml4, child_p->va, child_f->kva, child_p->writable);
+			}
+
+			if (!spt_insert_page (spt, child_p)) {
+				goto err;
+			}
+			
+			return true;
+		}
+
+
 
 		switch (VM_TYPE(type)) {
 			case VM_ANON:
@@ -104,21 +117,18 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 				goto err;
 		}
 
+		if (type & VM_STACK) {
+			newpage->va = upage;
+			newpage->writable = writable;
+			if (!vm_do_claim_page (newpage)) {
+				goto err;
+			}
+		}
 		/* TODO: Insert the page into the spt. */
-
 		newpage->writable = writable;
 		if (!spt_insert_page (spt, newpage)) {
 			goto err;
 		}
-
-		// if (type & VM_FORK) {
-		// 	struct page *parent_page = (struct page *)aux;
-		// 	if (vm_do_claim_page(newpage)) {
-		// 		memcpy (newpage->frame->kva, parent_page->frame->kva, PGSIZE);
-		// 	} else {
-		// 		goto err;
-		// 	}
-		// }
 
 		return true;
 	}
@@ -186,7 +196,8 @@ vm_get_frame (void) {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
 	// 1. frame 할당
-	frame = calloc(1, sizeof (struct frame));
+	frame = malloc(sizeof (struct frame));
+	frame->page = NULL;
 	frame->kva = palloc_get_page(PAL_USER | PAL_ZERO);
 	if (frame->kva == NULL)
 		PANIC("todo");
@@ -227,7 +238,7 @@ vm_stack_growth (void *addr UNUSED) {
 	// addr = pg_round_down(addr);
 	// printf("new stack addr: %p\n", addr);
 
-	// vm_alloc_page (VM_ANON || VM_STACK, addr, true);
+	// vm_alloc_page (VM_ANON | VM_STACK, addr, true);
 }
 
 /* Handle the fault on write_protected page */
@@ -274,9 +285,6 @@ bool
 vm_claim_page (void *va UNUSED) {
 	struct page *page;
 	/* TODO: Fill this function */
-	// page = palloc_get_page(PAL_USER);
-	// page = calloc (1, sizeof (struct page));
-	// page->va = pg_round_down(va);
 	page = spt_find_page (&thread_current ()->spt, pg_round_down (va));
 	return vm_do_claim_page (page);
 }
@@ -341,27 +349,28 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 
 			struct hash_elem *h_elem = list_entry(elem, struct hash_elem, list_elem);
 			
-			struct page *parent_p = hash_entry(h_elem, struct page, h_elem);
-			struct page *child_p = (struct page *) calloc (1, sizeof (struct page));
-			
+			struct page *p = hash_entry(h_elem, struct page, h_elem);
 
-			memcpy (child_p, parent_p, sizeof (struct page));
-
-			/* Set links */
-			if (parent_p->frame->kva != NULL) {
-				struct frame *child_f = vm_get_frame();
-				child_f->page = child_p;
-				child_p->frame = child_f;
-				memcpy (child_f->kva, parent_p->frame->kva, PGSIZE);		/* copy the physical frame */
-
-				/* Set mmu */
-				pml4_set_page (thread_current ()->pml4, child_p->va, child_f->kva, child_p->writable);
+			if (!vm_alloc_page_with_initializer (page_get_type(p) | VM_FORK, p->va, p->writable, NULL, p)) {
+				return false;
 			}
-			/* insert to dst */
-			spt_insert_page (dst, child_p);
 		}
 	}
 	return true;
+
+	// 보라
+	// struct hash_iterator i;
+
+	// hash_first (&i, &src->hash_table);
+	// while (hash_next (&i))
+	// {
+	// 	struct page *p = hash_entry (hash_cur (&i), struct page, h_elem);
+	// 	if (!vm_alloc_page_with_initializer (page_get_type(p) | VM_FORK, p->va, p->writable, NULL, p)) {
+	// 		return false;
+	// 	}
+	// }
+	// return true;
+
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -385,6 +394,7 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	// 	}
 	// }
 	//하면 에러남???
+	// 우식
 	hash_clear (&spt->hash_table, NULL);
 	// hash_destroy (&spt->hash_table, NULL);
 }
