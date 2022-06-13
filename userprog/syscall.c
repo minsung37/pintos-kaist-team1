@@ -85,7 +85,7 @@ void
 syscall_handler(struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
 	thread_current ()->rsp = f->rsp;
-	// printf("syscall rsp: %p\n", thread_current ()->rsp);
+	// printf("syscall rsp: %p\n", pg_round_down(f->rsp));
 	switch (f->R.rax)
 	{
 	case SYS_HALT:

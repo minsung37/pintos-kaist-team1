@@ -104,8 +104,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 			return true;
 		}
 
-
-
 		switch (VM_TYPE(type)) {
 			case VM_ANON:
 				uninit_new (newpage, upage, init, type, aux, anon_initializer);
@@ -120,6 +118,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		if (type & VM_STACK) {
 			newpage->va = upage;
 			newpage->writable = writable;
+			// printf("in vm alloc");
 			if (!vm_do_claim_page (newpage)) {
 				goto err;
 			}
@@ -235,10 +234,14 @@ vm_get_frame (void) {
 /* Growing the stack. */
 static void
 vm_stack_growth (void *addr UNUSED) {
-	// addr = pg_round_down(addr);
+	addr = pg_round_down(addr);
+
+	if (!vm_alloc_page (VM_ANON | VM_STACK, addr, true)) {
+		exit(-1);
+	}
+	// printf("vm growth cur_rsp %p, stack_bottom %p\n", thread_current ()->rsp, thread_current ()->stk_btm);
 	// printf("new stack addr: %p\n", addr);
 
-	// vm_alloc_page (VM_ANON | VM_STACK, addr, true);
 }
 
 /* Handle the fault on write_protected page */
@@ -255,18 +258,38 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-		// printf("min %p, cur_rsp %p, max %p\n", USER_STACK - MAX_STACK_SIZE, current->rsp, USER_STACK - PGSIZE);
-
-
+	// printf("vm handler min %d, cur_rsp %d, max %d\n", USER_STACK - MAX_STACK_SIZE, f->rsp, USER_STACK - PGSIZE);
+	// printf("vm handler min %d, cur_rsp %d, max %d\n", USER_STACK - MAX_STACK_SIZE, current->rsp, USER_STACK - PGSIZE);
 	if (not_present) {
 		page = spt_find_page (spt, addr);
-		// printf("thread name %s, page->frame %d\n", thread_name(), page->frame);
-		// if (page != NULL) {
-		// 	printf("min %p, cur_rsp %p, max %p\n", USER_STACK - MAX_STACK_SIZE, current->rsp, USER_STACK - PGSIZE);
-		// 	if ((USER_STACK - MAX_STACK_SIZE < current->rsp) && (current->rsp < USER_STACK - PGSIZE)) {
-		// 		vm_stack_growth (current->rsp);
-		// 	}
-		// }
+
+		if (page == NULL) {
+
+			void *curr_rsp = current->rsp;
+
+			if (f->rsp < USER_STACK - MAX_STACK_SIZE) {
+				return false;
+			}
+			
+			// printf("vm_try_hdr f->rsp %p, curr_rsp %p\n", f->rsp, curr_rsp);
+
+			// printf("vm_try_handler thread name: %s stk_pf_cnt: %d\n", thread_name (), stk_pf_cnt);
+			if (f->rsp < curr_rsp) {
+				while (f->rsp < curr_rsp) {
+
+					// printf("f_rsp %p, stack_bottom %p\n", f->rsp, stack_bottom);
+
+					// printf("vm_try_handler page in while loop\n");
+
+					vm_stack_growth (curr_rsp - PGSIZE);
+					// printf("vm_try_handler thread name: %s stk_pf_cnt: %d\n", thread_name (), stk_pf_cnt);
+					curr_rsp -= PGSIZE;
+					
+				}
+
+				return true;
+			}
+		}
 	}
 
 	return vm_do_claim_page (page);
@@ -394,7 +417,7 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	// 	}
 	// }
 	//하면 에러남???
-	// 우식
+	//
 	hash_clear (&spt->hash_table, NULL);
 	// hash_destroy (&spt->hash_table, NULL);
 }

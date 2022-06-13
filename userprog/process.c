@@ -808,7 +808,8 @@ setup_stack(struct intr_frame *if_)
 {
 	bool success = false;
 	void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
-
+	// void *stack_bottom = (void *)(((uint8_t *)thread_current ()->stk_btm) - PGSIZE);
+	// printf("setup stack stack_bottom %p\n", stack_bottom);
 	/* TODO: Map the stack on stack_bottom and claim the page immediately.
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
@@ -816,6 +817,8 @@ setup_stack(struct intr_frame *if_)
 	if (success = vm_alloc_page (VM_ANON | VM_STACK, stack_bottom, true)) {
 		if_->rsp = USER_STACK;
 	}
+	// printf("setup stack stack_bottom %p\n", stack_bottom);
+
 	return success;
 }
 #endif /* VM */

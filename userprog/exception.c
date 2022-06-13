@@ -122,7 +122,9 @@ page_fault (struct intr_frame *f) {
 	bool write;        /* True: access was write, false: access was read. */
 	bool user;         /* True: access by user, false: access by kernel. */
 	void *fault_addr;  /* Fault address. */
-
+	// printf("page fault size %d\n", thread_current()->rsp - f->rsp);
+	// printf("page fault min %p, cur_rsp %p, max %p\n", USER_STACK - (1<<20), f->rsp, USER_STACK - PGSIZE);
+	// thread_current ()->rsp = f->rsp;
 	/* Obtain faulting address, the virtual address that was
 	   accessed to cause the fault.  It may point to code or to
 	   data.  It is not necessarily the address of the instruction
@@ -154,13 +156,14 @@ page_fault (struct intr_frame *f) {
 	/* Count page faults. */
 	page_fault_cnt++;
 
-	exit(-1);
-	// printf("thread name: %s, exit code: %d\n", thread_current ()->name, thread_current()->exit_code);
-	// /* If the fault is true fault, show info and exit. */
+	
+	/* If the fault is true fault, show info and exit. */
 	// printf ("Page fault at %p: %s error %s page in %s context.\n",
 	// 		fault_addr,
 	// 		not_present ? "not present" : "rights violation",
 	// 		write ? "writing" : "reading",
 	// 		user ? "user" : "kernel");
+	
+	exit(-1);
 	// kill (f);
 }
