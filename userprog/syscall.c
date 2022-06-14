@@ -46,21 +46,17 @@ check_address(void *addr) {
 
 #ifdef VM
 void 
-check_valid_buffer(void *buffer, unsigned length, bool writable) {
-
-	int va;
-	va = pg_round_down(buffer);
-	// >= ????
-	while (length > 0) {
-		struct page *p = spt_find_page (&thread_current ()->spt, (void *)(va));
-		if (p == NULL) {
+check_valid_buffer(void *buffer, unsigned length) {
+	uint64_t size;
+	for (size = 0; size <= length; size += PGSIZE) {
+		void *addr = buffer + size;
+		if (addr == NULL || is_kernel_vaddr(addr))
 			exit(-1);
-		}
-		if (p->writable != writable) {
+	
+		struct page *p = spt_find_page (&thread_current ()->spt, addr);
+		// printf("ADDR %p writable? %d\n", addr, p->writable);
+		if (p == NULL || !p->writable) 
 			exit(-1);
-		}
-		length -= PGSIZE;
-		va += PGSIZE;
 	}
 }
 #endif
@@ -85,7 +81,8 @@ void
 syscall_handler(struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
 	thread_current ()->rsp = f->rsp;
-	// printf("syscall rsp: %p\n", thread_current ()->rsp);
+	// printf("syscall rsp1: %p\n", thread_current ()->rsp);
+	// printf("syscall rsp2: %p\n", f->rsp);
 	switch (f->R.rax)
 	{
 	case SYS_HALT:
@@ -214,9 +211,9 @@ filesize(int fd) {
 
 int 
 read(int fd, void *buffer, unsigned length) {
-	check_address(buffer);
-	// check_valid_buffer(buffer, length, true || false);
-
+	// check_address(buffer);
+	check_valid_buffer(buffer, length);
+	// printf("###############: %d", fd);
 	struct thread *curr = thread_current();
 	int bytes_read;
 
@@ -241,7 +238,7 @@ int
 write(int fd, const void *buffer, unsigned length) {
 	check_address(buffer);
 	// check_valid_buffer(buffer, length, true || false);
-
+	// printf("44444444444444444: %d\n", fd);
 	if (fd == 1) {
 		lock_acquire(&filesys_lock);
 		putbuf(buffer, length);

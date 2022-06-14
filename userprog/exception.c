@@ -7,6 +7,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "intrinsic.h"
+#include "vm/vm.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -126,10 +127,16 @@ page_fault (struct intr_frame *f) {
 	/* Obtain faulting address, the virtual address that was
 	   accessed to cause the fault.  It may point to code or to
 	   data.  It is not necessarily the address of the instruction
-	   that caused the fault (that's f->rip). */
+	   that caused the fault (that's f->rip). 
+		 장애를 발생시키기 위해 액세스한 가상 주소인 장애 주소를 가져옵니다.
+		 코드 또는 데이터를 가리킬 수 있습니다.
+		 고장을 일으킨 것은 반드시 명령의 주소일 필요는 없습니다.	 
+	*/
 
 	fault_addr = (void *) rcr2();
-
+	// printf("page fault - f->rsp : %p\n", f->rsp);
+	thread_current()->rsp = f->rsp;
+	// printf("page_fault - addr : %p\n", f->rsp);
 	/* Turn interrupts back on (they were only off so that we could
 	   be assured of reading CR2 before it changed). */
 	intr_enable ();

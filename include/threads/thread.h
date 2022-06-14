@@ -16,6 +16,9 @@
 
 #define FILE_NUM 128
 
+#define USERPROG
+#define VM
+
 
 /* States in a thread's life cycle. */
 enum thread_status {
@@ -109,13 +112,14 @@ struct  thread {
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
+	uint64_t rsp;						/* saving rsp on the INITIAL transition from user to kernel mode */
+	uint64_t stack_bottom;	
 #endif
 
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	struct intr_frame temp_tf;
 
-	uint64_t rsp;						/* saving rsp on the INITIAL transition from user to kernel mode */
 
 	unsigned magic;                     /* Detects stack overflow. */
 

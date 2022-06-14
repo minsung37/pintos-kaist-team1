@@ -6,7 +6,21 @@
         "file.h": "c",
         "*.inc": "c",
         "list.h": "c",
-        "vm.h": "c"
+        "vm.h": "c",
+        "array": "c",
+        "istream": "c",
+        "ostream": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "utility": "c",
+        "*.tcc": "c",
+        "exception": "c",
+        "fstream": "c",
+        "iosfwd": "c",
+        "new": "c",
+        "sstream": "c",
+        "streambuf": "c",
+        "limits": "c"
     },
     "C_Cpp.dimInactiveRegions": false
 }

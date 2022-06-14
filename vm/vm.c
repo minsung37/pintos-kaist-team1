@@ -56,6 +56,8 @@ static struct frame *vm_get_victim (void);
 static bool vm_do_claim_page (struct page *page);
 static struct frame *vm_evict_frame (void);
 
+// static void vm_stack_growth (void *addr UNUSED);
+// bool expand_stack(void *addr);
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
  * `vm_alloc_page`. */
@@ -235,15 +237,18 @@ vm_get_frame (void) {
 /* Growing the stack. */
 static void
 vm_stack_growth (void *addr UNUSED) {
-	// addr = pg_round_down(addr);
-	// printf("new stack addr: %p\n", addr);
-
-	// vm_alloc_page (VM_ANON | VM_STACK, addr, true);
+	addr = pg_round_down(addr);
+	if (!vm_alloc_page (VM_ANON | VM_STACK, addr, true)) {
+		exit(-1);
+	}
+	// 성장한 경우
+	thread_current()->stack_bottom -= PGSIZE;
 }
 
 /* Handle the fault on write_protected page */
 static bool
 vm_handle_wp (struct page *page UNUSED) {
+	
 }
 
 /* Return true on success */
@@ -253,22 +258,51 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct thread *current = thread_current ();
 	struct supplemental_page_table *spt UNUSED = &current->spt;
 	struct page *page = NULL;
+	void *curr_rsp = current->rsp;
+
+	// printf("vm_try_handle_fault - addr : %p\n", addr); 		 // 0x400f68
+	// // page_fault 의 if->rsp
+	// printf("vm_try_handle_fault - cur->rsp : %p\n", current->rsp); // 0x4747ffd8
+	// // 현재 쓰레드의 if->rsp
+	// printf("vm_try_handle_fault - f->rsp : %p\n", f->rsp); // 0x4747ffd8
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-		// printf("min %p, cur_rsp %p, max %p\n", USER_STACK - MAX_STACK_SIZE, current->rsp, USER_STACK - PGSIZE);
-
-
+	// printf("min :%p\n", addr);
+	// printf("min %p, cur_rsp %p, max %p\n", USER_STACK - MAX_STACK_SIZE, current->rsp, USER_STACK - PGSIZE);
+	// printf();
+	// if (is_kernel_vaddr(addr)){
+	// 	printf("!!!!!!!!!!!!!!!!!!!!!!\n");
+	// } else {
+	// 	printf("1111111111111111111111\n");
+	// }
+	// if (is_kernel_vaddr(curr_rsp)){
+	// 	printf("$$$$$$$$$$$$$$$$$$$$$$$\n");
+	// }
+	// else {
+	// 	printf("22222222222222222222222\n");
+	// }
+	// if (is_kernel_vaddr(f->rsp)){
+	// 	printf("***********************\n");
+	// } else {
+	// 	printf("333333333333333333333333333\n");
+	// }
 	if (not_present) {
 		page = spt_find_page (spt, addr);
 		// printf("thread name %s, page->frame %d\n", thread_name(), page->frame);
-		// if (page != NULL) {
-		// 	printf("min %p, cur_rsp %p, max %p\n", USER_STACK - MAX_STACK_SIZE, current->rsp, USER_STACK - PGSIZE);
-		// 	if ((USER_STACK - MAX_STACK_SIZE < current->rsp) && (current->rsp < USER_STACK - PGSIZE)) {
-		// 		vm_stack_growth (current->rsp);
-		// 	}
-		// }
+		// 페이지가 없는경우
+		if (page == NULL) {
+			// printf("min %p, cur_rsp %p, max %p\n", USER_STACK - MAX_STACK_SIZE, current->rsp, USER_STACK - PGSIZE);
+			// if ((USER_STACK - PGSIZE <= addr) && (addr <= USER_STACK)) {
+			if ((USER_STACK - STACK_SIZE <= addr) && (addr <= USER_STACK)) {
+				if (f->rsp - 8 <= addr) {
+					vm_stack_growth (addr);
+					return true;
+				}
+				return false;
+			}
+			return false;
+		}
 	}
-
 	return vm_do_claim_page (page);
 }
 
@@ -306,7 +340,7 @@ vm_do_claim_page (struct page *page) {
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	pml4_set_page (thread_current ()->pml4, page->va, frame->kva, page->writable);
 	// page->valid_bit = true;
-
+	
 	return swap_in (page, frame->kva);		// uninit_initialize (page, frame->kva)
 }
 

@@ -160,4 +160,6 @@ unsigned page_hash (const struct hash_elem *p_, void *aux UNUSED);
 
 static struct frame * vm_get_frame (void); // * 추가
 
+
+
 #endif  /* VM_VM_H */
