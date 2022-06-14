@@ -244,7 +244,6 @@ vm_handle_wp (struct page *page UNUSED) {
 bool
 vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
-	// printf("vm handler write %d\n", write);
 
 	struct thread *current = thread_current ();
 	struct supplemental_page_table *spt UNUSED = &current->spt;
@@ -257,17 +256,21 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		page = spt_find_page (spt, addr);
 
 		if (page == NULL) {
-
 			void *curr_rsp = current->rsp;
+			// printf("cur->rsp %p, f->rsp %p, addr %d\n", curr_rsp, f->rsp, addr);
+			// printf("f->rsp - addr %d\n", f->rsp - (int)addr);
 
-			if (f->rsp < USER_STACK - MAX_STACK_SIZE) {
+			if (addr < USER_STACK - MAX_STACK_SIZE) {
 				return false;
 			}
 
-			if (f->rsp < curr_rsp) {
-				while (f->rsp < curr_rsp) {
+
+			if (f->rsp - (int64_t) addr == 8) {
+				while (addr < curr_rsp) {
 					vm_stack_growth (curr_rsp - PGSIZE);
 					curr_rsp -= PGSIZE;
+					// printf("while loop!!!! cur->rsp %p, f->rsp %p, addr %p\n", curr_rsp, f->rsp, addr);
+
 				}
 
 				return true;
