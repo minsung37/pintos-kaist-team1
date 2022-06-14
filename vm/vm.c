@@ -59,9 +59,6 @@ static struct frame *vm_evict_frame (void);
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
  * `vm_alloc_page`. */
-
-// vm_alloc_page_with_initializer(VM_ANON, upage, writable,
-// 								lazy_load_segment, &file_info)
 bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
@@ -118,7 +115,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		if (type & VM_STACK) {
 			newpage->va = upage;
 			newpage->writable = writable;
-			// printf("in vm alloc");
 			if (!vm_do_claim_page (newpage)) {
 				goto err;
 			}
@@ -194,7 +190,7 @@ static struct frame *
 vm_get_frame (void) {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
-	// 1. frame 할당
+	// 1. frame 할당 calloc으로 하면 안됨.
 	frame = malloc(sizeof (struct frame));
 	frame->page = NULL;
 	frame->kva = palloc_get_page(PAL_USER | PAL_ZERO);
@@ -234,14 +230,9 @@ vm_get_frame (void) {
 /* Growing the stack. */
 static void
 vm_stack_growth (void *addr UNUSED) {
-	addr = pg_round_down(addr);
-
-	if (!vm_alloc_page (VM_ANON | VM_STACK, addr, true)) {
+	if (!vm_alloc_page (VM_ANON | VM_STACK, pg_round_down(addr), true)) {
 		exit(-1);
 	}
-	// printf("vm growth cur_rsp %p, stack_bottom %p\n", thread_current ()->rsp, thread_current ()->stk_btm);
-	// printf("new stack addr: %p\n", addr);
-
 }
 
 /* Handle the fault on write_protected page */
@@ -253,14 +244,16 @@ vm_handle_wp (struct page *page UNUSED) {
 bool
 vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
+	// printf("vm handler write %d\n", write);
+
 	struct thread *current = thread_current ();
 	struct supplemental_page_table *spt UNUSED = &current->spt;
 	struct page *page = NULL;
+
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-	// printf("vm handler min %d, cur_rsp %d, max %d\n", USER_STACK - MAX_STACK_SIZE, f->rsp, USER_STACK - PGSIZE);
-	// printf("vm handler min %d, cur_rsp %d, max %d\n", USER_STACK - MAX_STACK_SIZE, current->rsp, USER_STACK - PGSIZE);
 	if (not_present) {
+
 		page = spt_find_page (spt, addr);
 
 		if (page == NULL) {
@@ -270,21 +263,11 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 			if (f->rsp < USER_STACK - MAX_STACK_SIZE) {
 				return false;
 			}
-			
-			// printf("vm_try_hdr f->rsp %p, curr_rsp %p\n", f->rsp, curr_rsp);
 
-			// printf("vm_try_handler thread name: %s stk_pf_cnt: %d\n", thread_name (), stk_pf_cnt);
 			if (f->rsp < curr_rsp) {
 				while (f->rsp < curr_rsp) {
-
-					// printf("f_rsp %p, stack_bottom %p\n", f->rsp, stack_bottom);
-
-					// printf("vm_try_handler page in while loop\n");
-
 					vm_stack_growth (curr_rsp - PGSIZE);
-					// printf("vm_try_handler thread name: %s stk_pf_cnt: %d\n", thread_name (), stk_pf_cnt);
 					curr_rsp -= PGSIZE;
-					
 				}
 
 				return true;

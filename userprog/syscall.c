@@ -38,6 +38,7 @@ check_address(void *addr) {
 		exit(-1);
 #ifdef VM	
 	struct page *p = spt_find_page (&thread_current ()->spt, addr);
+	// printf("check_address %p, page? %p\n", addr, p);
 	if (p == NULL) {
 		exit(-1);
 	}
@@ -46,21 +47,17 @@ check_address(void *addr) {
 
 #ifdef VM
 void 
-check_valid_buffer(void *buffer, unsigned length, bool writable) {
-
-	int va;
-	va = pg_round_down(buffer);
-	// >= ????
-	while (length > 0) {
-		struct page *p = spt_find_page (&thread_current ()->spt, (void *)(va));
-		if (p == NULL) {
+check_valid_buffer(void *buffer, unsigned length) {
+	uint64_t size;
+	for (size = 0; size <= length; size += PGSIZE) {
+		void *addr = buffer + size;
+		if (addr == NULL || is_kernel_vaddr(addr))
 			exit(-1);
-		}
-		if (p->writable != writable) {
+	
+		struct page *p = spt_find_page (&thread_current ()->spt, addr);
+		// printf("ADDR %p writable? %d\n", addr, p->writable);
+		if (p == NULL || !p->writable) 
 			exit(-1);
-		}
-		length -= PGSIZE;
-		va += PGSIZE;
 	}
 }
 #endif
@@ -85,7 +82,8 @@ void
 syscall_handler(struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
 	thread_current ()->rsp = f->rsp;
-	// printf("syscall rsp: %p\n", pg_round_down(f->rsp));
+	// printf("syscall num %d rsp: %p stack bottom:%p\n", f->R.rax, f->rsp, pg_round_down(f->rsp));
+	// printf("syscall cs: %p vtop s:%p\n", f->cs, ptov(f->cs));
 	switch (f->R.rax)
 	{
 	case SYS_HALT:
@@ -190,6 +188,7 @@ remove(const char *file) {
 int 
 open(const char *file) {
 	check_address(file);
+
 	struct thread *current = thread_current();
 	int i;
 
@@ -214,8 +213,11 @@ filesize(int fd) {
 
 int 
 read(int fd, void *buffer, unsigned length) {
-	check_address(buffer);
-	// check_valid_buffer(buffer, length, true || false);
+	// check_address(buffer);
+	// struct page *p = spt_find_page (&thread_current ()->spt, buffer);
+	check_valid_buffer(buffer, length);
+	// printf("writable? %d\n", p->writable);
+	// printf("read rsp %p %p %p\n", thread_current()->rsp, length, pg_round_down(thread_current ()->rsp));
 
 	struct thread *curr = thread_current();
 	int bytes_read;
@@ -240,7 +242,10 @@ read(int fd, void *buffer, unsigned length) {
 int
 write(int fd, const void *buffer, unsigned length) {
 	check_address(buffer);
-	// check_valid_buffer(buffer, length, true || false);
+	// check_valid_buffer(buffer, length);
+	// printf("write rsp size %d\n", thread_current()->rsp - thread_current()->tf.rsp);
+	// printf("write rsp %p %p\n", thread_current()->rsp, thread_current()->tf.rsp);
+	// printf("write length %d\n", length);
 
 	if (fd == 1) {
 		lock_acquire(&filesys_lock);

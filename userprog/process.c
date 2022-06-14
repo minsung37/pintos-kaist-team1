@@ -731,11 +731,6 @@ lazy_load_segment(struct page *page, struct file_info *aux)
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
-	// page->run_file = aux->file;
-	// page->ofs = aux->ofs;
-	// page->file_size = aux->file_size;
-	// page->read_bytes = aux->read_bytes;
-	// page->zero_bytes = aux->zero_bytes;
 
 	if (file_read_at (aux->file, page->frame->kva, aux->read_bytes, aux->ofs) != aux->read_bytes) {
 		vm_dealloc_page (page);
@@ -808,8 +803,7 @@ setup_stack(struct intr_frame *if_)
 {
 	bool success = false;
 	void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
-	// void *stack_bottom = (void *)(((uint8_t *)thread_current ()->stk_btm) - PGSIZE);
-	// printf("setup stack stack_bottom %p\n", stack_bottom);
+
 	/* TODO: Map the stack on stack_bottom and claim the page immediately.
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
@@ -817,7 +811,6 @@ setup_stack(struct intr_frame *if_)
 	if (success = vm_alloc_page (VM_ANON | VM_STACK, stack_bottom, true)) {
 		if_->rsp = USER_STACK;
 	}
-	// printf("setup stack stack_bottom %p\n", stack_bottom);
 
 	return success;
 }

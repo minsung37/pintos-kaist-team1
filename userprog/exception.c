@@ -123,7 +123,7 @@ page_fault (struct intr_frame *f) {
 	bool user;         /* True: access by user, false: access by kernel. */
 	void *fault_addr;  /* Fault address. */
 	// printf("page fault size %d\n", thread_current()->rsp - f->rsp);
-	// printf("page fault min %p, cur_rsp %p, max %p\n", USER_STACK - (1<<20), f->rsp, USER_STACK - PGSIZE);
+	// printf("page fault f->rsp %p, cur_rsp %p\n", f->rsp, thread_current ()->rsp);
 	// thread_current ()->rsp = f->rsp;
 	/* Obtain faulting address, the virtual address that was
 	   accessed to cause the fault.  It may point to code or to
