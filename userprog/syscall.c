@@ -32,6 +32,9 @@ void syscall_handler(struct intr_frame *);
 #define MSR_LSTAR 0xc0000082		/* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
 
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap (void *addr);
+
 void 
 check_address(void *addr) {
 	if (addr == NULL || is_kernel_vaddr(addr))
@@ -129,19 +132,40 @@ syscall_handler(struct intr_frame *f UNUSED) {
 	case SYS_CLOSE:
 		close(f->R.rdi);
 		break;
+
+	case SYS_MMAP:
+		f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+		break;
 	default:
 		exit(-1);
 		break;
-	}
+	}	
+	// case SYS_MUNMAP:
+	// 	munmap(f->R.rdi);
+	// 	break;
+
+	// case SYS_CHDIR:                  /* Change the current directory. */
+	// 	break;
+	// case SYS_MKDIR:                  /* Create a directory. */
+	// 	break;
+	// case SYS_READDIR:                /* Reads a directory entry. */
+	// 	break;
+	// case SYS_ISDIR:                  /* Tests if a fd represents a directory. */
+	// 	break;
+	// case SYS_INUMBER:                /* Returns the inode number for a fd. */
+	// 	break;
+	// case SYS_SYMLINK:                /* Returns the inode number for a fd. */
+	// 	break;
+
 }
 
 void 
-halt(void) {
+halt (void) {
 	power_off();
 }
 
 void 
-exit(int status) {
+exit (int status) {
 	struct thread *cur = thread_current();
 	cur->exit_code = status;
 	printf("%s: exit(%d)\n", cur->name, status);
@@ -149,14 +173,14 @@ exit(int status) {
 }
 
 int 
-fork(const char *thread_name) {
+fork (const char *thread_name) {
 	check_address(thread_name);
 	int ret = process_fork(thread_name, &thread_current()->temp_tf);
 	return ret;
 }
 
 int 
-exec(const char *file) {
+exec (const char *file) {
 	check_address(file);
 
 	char *fn_copy[64];
@@ -168,25 +192,25 @@ exec(const char *file) {
 }
 
 int 
-wait(tid_t pid) {
+wait (tid_t pid) {
 	int ret = process_wait(pid);
 	return ret;
 }
 
 bool 
-create(const char *file, unsigned initial_size) {
+create (const char *file, unsigned initial_size) {
 	check_address(file);
 	return filesys_create(file, initial_size);
 }
 
 bool 
-remove(const char *file) {
+remove (const char *file) {
 	check_address(file);
 	return filesys_remove(file);
 }
 
 int 
-open(const char *file) {
+open (const char *file) {
 	check_address(file);
 
 	struct thread *current = thread_current();
@@ -204,7 +228,7 @@ open(const char *file) {
 }
 
 int 
-filesize(int fd) {
+filesize (int fd) {
 	struct file *file = thread_current()->fdt[fd];
 	if (file == NULL)
 		return -1;
@@ -212,7 +236,7 @@ filesize(int fd) {
 }
 
 int 
-read(int fd, void *buffer, unsigned length) {
+read (int fd, void *buffer, unsigned length) {
 	// check_address(buffer);
 	// struct page *p = spt_find_page (&thread_current ()->spt, buffer);
 	check_valid_buffer(buffer, length);
@@ -240,7 +264,7 @@ read(int fd, void *buffer, unsigned length) {
 }
 
 int
-write(int fd, const void *buffer, unsigned length) {
+write (int fd, const void *buffer, unsigned length) {
 	check_address(buffer);
 	// check_valid_buffer(buffer, length);
 	// printf("write rsp size %d\n", thread_current()->rsp - thread_current()->tf.rsp);
@@ -273,21 +297,21 @@ write(int fd, const void *buffer, unsigned length) {
 }
 
 void 
-seek(int fd, unsigned position) {
+seek (int fd, unsigned position) {
 	struct file *file = thread_current()->fdt[fd];
 	if (file != NULL)
 		file_seek(file, position);
 }
 
 unsigned 
-tell(int fd) {
+tell (int fd) {
 	struct file *file = thread_current()->fdt[fd];
 	if (file != NULL)
 		return file_tell(file);
 }
 
 void 
-close(int fd) {
+close (int fd) {
 	struct file *file = thread_current()->fdt[fd];
 	if (file != NULL) {
 		lock_acquire(&filesys_lock);
@@ -295,4 +319,15 @@ close(int fd) {
 		file_close(thread_current()->fdt[fd]);
 		lock_release(&filesys_lock);
 	}
+}
+
+
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+	check_valid_buffer(addr, length);
+	return addr;
+}
+
+void 
+munmap (void *addr) {
+
 }

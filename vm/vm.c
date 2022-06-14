@@ -270,7 +270,6 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 					vm_stack_growth (curr_rsp - PGSIZE);
 					curr_rsp -= PGSIZE;
 					// printf("while loop!!!! cur->rsp %p, f->rsp %p, addr %p\n", curr_rsp, f->rsp, addr);
-
 				}
 
 				return true;
