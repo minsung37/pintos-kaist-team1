@@ -89,7 +89,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 				child_f->page = child_p;
 				child_p->frame = child_f;
 
-				// child_f->kva = parent_p->frame->kva;
 				memcpy (child_f->kva, parent_p->frame->kva, PGSIZE);
 				pml4_set_page (thread_current ()->pml4, child_p->va, child_f->kva, child_p->writable);
 			}
@@ -107,6 +106,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 				break;
 			case VM_FILE:
 				uninit_new (newpage, upage, init, type, aux, file_backed_initializer);
+				newpage->is_mmapped = true;
 				break;
 			default:
 				goto err;
