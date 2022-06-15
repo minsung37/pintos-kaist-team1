@@ -1,6 +1,8 @@
 /* file.c: Implementation of memory backed file object (mmaped object). */
 
 #include "vm/vm.h"
+#include "userprog/process.h"
+#include "threads/vaddr.h"
 
 static bool file_backed_swap_in (struct page *page, void *kva);
 static bool file_backed_swap_out (struct page *page);
@@ -47,10 +49,73 @@ file_backed_destroy (struct page *page) {
 }
 
 /* Do the mmap */
-void *
-do_mmap (void *addr, size_t length, int writable,
-		struct file *file, off_t offset) {
+static bool
+lazy_load_segment(struct page *page, struct file_info *aux)
+{
+	/* TODO: Load the segment from the file */
+	/* TODO: This called when the first page fault occurs on address VA. */
+	/* TODO: VA is available when calling this function. */
+
+	if (file_read_at (aux->file, page->frame->kva, aux->read_bytes, aux->ofs) != aux->read_bytes) {
+		vm_dealloc_page (page);
+		// free (aux);
+
+		return false;
+	}
+	memset (page->frame->kva + aux->read_bytes, 0, aux->zero_bytes);
+	// free (aux);
+
+	return true;
+
 }
+
+
+/* Do the mmap */
+void *
+do_mmap (void *addr, size_t length, int writable, struct file *file, off_t offset) {
+
+	// ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
+	// ASSERT(pg_ofs(upage) == 0);
+	// ASSERT(ofs % PGSIZE == 0);
+
+	void *mmap_addr = addr;
+
+	struct file * mmap_file = file_reopen (file);
+	size_t read_bytes = file_length(file) / PGSIZE + file_length(file) % PGSIZE;
+	size_t zero_bytes = PGSIZE - file_length(file) % PGSIZE;
+	
+
+	while (read_bytes > 0 || zero_bytes > 0)
+	{
+		/* Do calculate how to fill this page.
+		 * We will read PAGE_READ_BYTES bytes from FILE
+		 * and zero the final PAGE_ZERO_BYTES bytes. */
+		struct file_info *f_info = (struct file_info *) calloc (1, sizeof (struct file_info));
+
+		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+		size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+		/* TODO: Set up aux to pass information to the lazy_load_segment. */
+		f_info->file = mmap_file;
+		f_info->ofs = offset;
+		f_info->read_bytes = page_read_bytes;
+		f_info->zero_bytes = page_zero_bytes;
+
+		if (!vm_alloc_page_with_initializer(VM_FILE, offset, writable, lazy_load_segment, f_info)){
+			return false;
+		}
+
+
+		/* Advance. */
+		read_bytes -= page_read_bytes;
+		zero_bytes -= page_zero_bytes;
+		addr += PGSIZE;
+		offset += page_read_bytes;
+	}
+
+	return mmap_addr;
+}
+
 
 /* Do the munmap */
 void

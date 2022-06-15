@@ -6,7 +6,8 @@
         "file.h": "c",
         "*.inc": "c",
         "list.h": "c",
-        "vm.h": "c"
+        "vm.h": "c",
+        "process.h": "c"
     },
     "C_Cpp.dimInactiveRegions": false
 }

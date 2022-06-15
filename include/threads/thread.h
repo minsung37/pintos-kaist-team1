@@ -16,6 +16,9 @@
 
 #define FILE_NUM 128
 
+#define USERPROG
+#define VM
+
 
 /* States in a thread's life cycle. */
 enum thread_status {

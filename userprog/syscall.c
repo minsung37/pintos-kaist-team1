@@ -322,12 +322,38 @@ close (int fd) {
 }
 
 
-void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
-	check_valid_buffer(addr, length);
-	return addr;
+void
+*mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+	// fd 로 open 한 파일이 0 바이트 길이를 가지고 있을 경우
+	struct file *file = thread_current()->fdt[fd];
+	if (file_length(file) == 0){
+		return NULL;
+	}
+	// addr 이 page-align 되어있지 않거나매핑된 페이지 범위가 기존에 존재하는 
+	// 매핑된 페이지 집합을 어떤 경우에도 덮어씌우는 경우에는 반드시 fail 로 처리
+	if (offset < PGSIZE) {
+		return NULL;
+	}
+	// 만약 addr 이 0 이면, 이는 반드시 fail 이다
+	// 우리의 mmap 함수는 length 가 0 인 케이스에도 fail 이어야 한다
+	if (addr ==  0 || length == 0) {
+		return NULL;
+	}
+	// 콘솔 입력 및 출력을 나타내는 file descriptor 는 매핑할 수 없다
+	if (fd == 0 || fd == 1) {
+		return NULL;
+	}
+	// if
+
+	// check_valid_buffer(addr, length);
+	return do_mmap (addr, length, writable, file, offset);
 }
 
 void 
 munmap (void *addr) {
-
+	// addr 범위의 정해진 주소에 대한 메모리 매핑을 해제한다.
+	// mmap_list내에서 mapping에 해당하는 mapid를 갖는 모든 vm_entry을해제
+	// 인자로 넘겨진 mapping 값이 CLOSE_ALL인, 경우 모든 파일 매핑을 제거 페이지 테이블에서 엔트리 제거
+	// 매핑 제거 시 do_munmap()함수 호출
+	// return do_munmap(addr);
 }
