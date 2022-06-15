@@ -107,7 +107,6 @@ do_mmap (void *addr, size_t length, int writable,
         curr += PGSIZE;
         offset += page_length;
     }
-	// printf("do_mmap finished!\n");
     return addr;
 
 }
@@ -117,20 +116,35 @@ void
 do_munmap (void *addr) {
 
     struct supplemental_page_table *spt = &thread_current ()->spt;
-    void *curr;
-	printf("do_MUNmap call! %p\n", spt_find_page(spt, curr));
-    
-    for (curr = addr; (spt_find_page(spt, curr) == NULL) || (!spt_find_page(spt, curr)->is_mmapped); curr += PGSIZE) {
+    void *curr = addr;
+	// printf("do_MUNmap call! ismapped? %d\n", (spt_find_page(spt, addr)->is_mmapped));
+	// printf("do_MUNmap call! isnull? %d\n", (spt_find_page(spt, addr) == NULL) || (!spt_find_page(spt, addr)->is_mmapped));
+    struct file *f = spt_find_page(spt, curr)->file.file;
+
+    for (curr = addr; (spt_find_page(spt, curr) != NULL); curr += PGSIZE) {
         struct page *p = spt_find_page(spt, curr);
-        struct file_page *fp = &p->file;
-        printf("current addr %p, dirty bit? %d\n", curr, pml4_is_dirty(thread_current ()->pml4, curr));
+        // struct file_page *fp = &p->file;
+        // printf("f %p, fp_file %p\n", f, p->file.file);
+        if (!p->is_mmapped || p->file.file != f)
+            return;
+        
+        // printf("11 do_MUNmap call! page %d\n", (spt_find_page(spt, curr)));
+        // printf("current addr %p, dirty bit? %d\n", curr, pml4_is_dirty(thread_current ()->pml4, curr));
         if (pml4_is_dirty(thread_current ()->pml4, curr)) {
-            file_write_at (fp->file, curr, fp->read_bytes, fp->ofs);
+	        // printf("22 do_MUNmap call! page %d\n", (spt_find_page(spt, curr)));
+
+            file_write_at (p->file.file, curr, p->file.read_bytes, p->file.ofs);
+	        // printf("33 do_MUNmap call! page %d\n", (spt_find_page(spt, curr)));
+
             pml4_set_dirty(thread_current ()->pml4, curr, false);
         }
+	    // printf("44 do_MUNmap call! page %d\n", (spt_find_page(spt, curr)));
+
         p->is_mmapped = false;
-        vm_dealloc_page(p);
+        // vm_dealloc_page(p);
+        destroy (p);
+	    // printf("55 do_MUNmap call! page %d\n", (spt_find_page(spt, curr)));
     }
-	printf("do_MUNmap finished!\n");
+	// printf("do_MUNmap finished!\n");
 }
 
