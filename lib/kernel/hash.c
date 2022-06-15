@@ -188,6 +188,7 @@ hash_first (struct hash_iterator *i, struct hash *h) {
 
 	i->hash = h;
 	i->bucket = i->hash->buckets;
+	// printf("i->bucket %p\n", i->bucket);
 	i->elem = list_elem_to_hash_elem (list_head (i->bucket));
 }
 

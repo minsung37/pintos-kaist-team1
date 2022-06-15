@@ -106,17 +106,19 @@ struct  thread {
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
 #endif
+
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
 #endif
+
+	// struct list mfile_list;
 
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	struct intr_frame temp_tf;
 
 	uint64_t rsp;						/* Saving rsp on the INITIAL transition from user to kernel mode */
-	int stkpf_cnt;					/* Count of stack page fault */
 
 	unsigned magic;                     /* Detects stack overflow. */
 

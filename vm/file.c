@@ -142,7 +142,7 @@ do_munmap (void *addr) {
 
         p->is_mmapped = false;
         // vm_dealloc_page(p);
-        destroy (p);
+        // destroy (p);
 	    // printf("55 do_MUNmap call! page %d\n", (spt_find_page(spt, curr)));
     }
 	// printf("do_MUNmap finished!\n");

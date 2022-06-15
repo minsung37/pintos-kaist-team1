@@ -13,6 +13,7 @@ test_main (void)
   int handle;
   char buf[0x1000];
 
+
   CHECK ((handle = open ("large.txt")) > 1, "open \"large.txt\"");
 
   CHECK (mmap ((void *) 0x10000000, 4096, 1, handle, 0x1000) == (void *) 0x10000000,

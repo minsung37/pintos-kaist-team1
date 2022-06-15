@@ -74,7 +74,6 @@ initd(void *f_name)
 #ifdef VM
 	supplemental_page_table_init(&thread_current ()->spt);
 #endif
-
 	process_init();
 
 	if (process_exec(f_name) < 0)
@@ -267,22 +266,36 @@ void process_exit(void)
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 
-	struct thread *curr = thread_current();
+	struct thread *current = thread_current();
 
-	file_close(curr->run_file);
+	file_close(current->run_file);
 
 	int i;
 
 	for (i = 2; i < 128; i++)
 	{
-		file_close(curr->fdt[i]);
-		curr->fdt[i] = NULL;
+		file_close(current->fdt[i]);
+		current->fdt[i] = NULL;
 	}
 
-	sema_up(&curr->wait_sema);
-	sema_down(&curr->exit_sema);
+#ifdef VM
+   	struct hash_iterator iter;
+	// printf("buckets %p\n", current->spt.hash_table.buckets);
+	if (current->spt.hash_table.buckets != NULL) {
+		hash_first (&iter, &current->spt.hash_table);
+		while (hash_next (&iter))
+		{
+			struct page *p = hash_entry (hash_cur (&iter), struct page, h_elem);
+			// printf("page? p %p is_mmapped? %d\n", p, p->is_mmapped);
+			if (p != NULL && p->is_mmapped)
+				munmap(p->va);
+		}
+	}
+#endif
+	sema_up(&current->wait_sema);
+	sema_down(&current->exit_sema);
 	
-	palloc_free_page(curr->fdt);
+	palloc_free_page(current->fdt);
 
 	process_cleanup();
 }
@@ -291,16 +304,24 @@ void process_exit(void)
 static void
 process_cleanup(void)
 {
-	struct thread *curr = thread_current();
+	struct thread *current = thread_current();
 
 #ifdef VM
-	supplemental_page_table_kill(&curr->spt);
+   	// struct hash_iterator iter;
+
+	// hash_first (&iter, &current->spt.hash_table);
+	// while (hash_next (&iter))
+	// {
+	// 	struct page *p = hash_entry (hash_cur (&iter), struct page, h_elem);
+	// 	munmap(p->va);
+	// }
+	supplemental_page_table_kill(&current->spt);
 #endif
 
 	uint64_t *pml4;
 	/* Destroy the current process's page directory and switch back
 	 * to the kernel-only page directory. */
-	pml4 = curr->pml4;
+	pml4 = current->pml4;
 	if (pml4 != NULL)
 	{
 		/* Correct ordering here is crucial.  We must set
@@ -310,7 +331,7 @@ process_cleanup(void)
 		 * directory before destroying the process's page
 		 * directory, or our active page directory will be one
 		 * that's been freed (and cleared). */
-		curr->pml4 = NULL;
+		current->pml4 = NULL;
 		pml4_activate(NULL);
 		pml4_destroy(pml4);
 	}

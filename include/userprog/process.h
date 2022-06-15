@@ -20,6 +20,7 @@ int process_wait (tid_t);
 void process_exit (void);
 void process_activate (struct thread *next);
 
+// bool lazy_load_segment(struct page *page, struct file_info *aux);
 void argument_stack(char **arg, int count, struct intr_frame *if_);
 struct thread *get_child_process(int pid);
 

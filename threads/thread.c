@@ -219,8 +219,6 @@ tid_t thread_create(const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
-	t->stkpf_cnt = 0;
-
 	sema_init(&t->fork_sema, 0);
 	sema_init(&t->wait_sema, 0);
 	sema_init(&t->exit_sema, 0);
@@ -513,10 +511,6 @@ init_thread(struct thread *t, const char *name, int priority)
 	t->magic = THREAD_MAGIC;
 	list_init(&t->donations);
 	list_init(&t->child_list);
-
-// #ifdef VM
-// 	supplemental_page_table_init(&t->spt);
-// #endif
 
 	t->nice = NICE_DEFAULT;
 	t->recent_cpu = RECENT_CPU_DEFAULT;

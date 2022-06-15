@@ -32,8 +32,8 @@ void syscall_handler(struct intr_frame *);
 #define MSR_LSTAR 0xc0000082		/* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
 
-void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
-void munmap (void *addr);
+// void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
+// void munmap (void *addr);
 
 void 
 check_address(void *addr) {
@@ -56,7 +56,7 @@ check_valid_buffer(void *buffer, unsigned length) {
 		void *addr = buffer + size;
 		if (addr == NULL || is_kernel_vaddr(addr))
 			exit(-1);
-	
+
 		struct page *p = spt_find_page (&thread_current ()->spt, addr);
 		// printf("ADDR %p writable? %d\n", addr, p->writable);
 		if (p == NULL || !p->writable) 
@@ -68,8 +68,6 @@ check_valid_buffer(void *buffer, unsigned length) {
 void 
 syscall_init(void) {
 
-	lock_init(&filesys_lock);
-
 	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48 |
 							((uint64_t)SEL_KCSEG) << 32);
 	write_msr(MSR_LSTAR, (uint64_t)syscall_entry);
@@ -79,6 +77,9 @@ syscall_init(void) {
 	 * mode stack. Therefore, we masked the FLAG_FL. */
 	write_msr(MSR_SYSCALL_MASK,
 			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
+
+	lock_init(&filesys_lock);
+	
 }
 
 void 
@@ -136,13 +137,13 @@ syscall_handler(struct intr_frame *f UNUSED) {
 	case SYS_MMAP:
 		f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
 		break;
+	case SYS_MUNMAP:
+		munmap(f->R.rdi);
+		break;
 	default:
 		exit(-1);
 		break;
 	}	
-	// case SYS_MUNMAP:
-	// 	munmap(f->R.rdi);
-	// 	break;
 
 	// case SYS_CHDIR:                  /* Change the current directory. */
 	// 	break;
@@ -238,18 +239,15 @@ filesize (int fd) {
 int 
 read (int fd, void *buffer, unsigned length) {
 	// check_address(buffer);
-	// struct page *p = spt_find_page (&thread_current ()->spt, buffer);
 	check_valid_buffer(buffer, length);
-	// printf("writable? %d\n", p->writable);
-	// printf("read rsp %p %p %p\n", thread_current()->rsp, length, pg_round_down(thread_current ()->rsp));
 
 	struct thread *curr = thread_current();
 	int bytes_read;
 
 	if (fd == 0) {
-		lock_acquire(&filesys_lock);
+		// lock_acquire(&filesys_lock);
 		bytes_read = input_getc();
-		lock_release(&filesys_lock);
+		// lock_release(&filesys_lock);
 
 		return bytes_read;
 	}
@@ -267,14 +265,11 @@ int
 write (int fd, const void *buffer, unsigned length) {
 	check_address(buffer);
 	// check_valid_buffer(buffer, length);
-	// printf("write rsp size %d\n", thread_current()->rsp - thread_current()->tf.rsp);
-	// printf("write rsp %p %p\n", thread_current()->rsp, thread_current()->tf.rsp);
-	// printf("write length %d\n", length);
 
 	if (fd == 1) {
-		lock_acquire(&filesys_lock);
+		// lock_acquire(&filesys_lock);
 		putbuf(buffer, length);
-		lock_release(&filesys_lock);
+		// lock_release(&filesys_lock);
 
 		return length;
 	}
@@ -322,12 +317,30 @@ close (int fd) {
 }
 
 
-void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
-	check_valid_buffer(addr, length);
-	return addr;
+void *
+mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+
+	// check_valid_buffer (addr, length);
+	// printf("===========mmap calls!===========\n");
+	// printf("addr %p %d %d\n", addr, is_kernel_vaddr(addr), pg_ofs(addr));
+	if (addr ==  NULL || is_kernel_vaddr(addr) || pg_ofs(addr))
+		return NULL;
+	// printf("length %d length <0 ? %d", (int64_t)length, length <= 0);
+	if ((int64_t)length <= 0 || (int64_t)length < (int64_t)offset)
+		return NULL;
+
+	if (fd < 2)
+		return NULL;
+
+	struct file *ofile = file_reopen(thread_current ()->fdt[fd]);
+	// printf("-----mmap ofile addr %p\n", ofile);
+	return do_mmap (addr, length, writable, ofile, offset);
 }
 
 void 
 munmap (void *addr) {
+	// printf("===========MUNmap calls!===========\n");
 
+	check_address (addr);
+	return do_munmap (addr);
 }

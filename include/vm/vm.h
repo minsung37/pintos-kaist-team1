@@ -63,6 +63,8 @@ struct page {
 	bool writable;
 	
 	struct hash_elem h_elem;
+	
+	bool is_mmapped;
 
 	bool valid_bit; // is_loaded
 	bool reference_bit;
@@ -132,7 +134,6 @@ struct supplemental_page_table {
 	/* ------------------------------------------------ */
 };
 
-
 #include "threads/thread.h"
 void supplemental_page_table_init (struct supplemental_page_table *spt);
 bool supplemental_page_table_copy (struct supplemental_page_table *dst,
@@ -152,7 +153,7 @@ bool vm_try_handle_fault (struct intr_frame *f, void *addr, bool user,
 bool vm_alloc_page_with_initializer (enum vm_type type, void *upage,
 		bool writable, vm_initializer *init, void *aux);
 void vm_dealloc_page (struct page *page);
-bool vm_claim_page (void *va);
+bool vm_claim_page (void *va);     
 enum vm_type page_get_type (struct page *page);
 
 bool page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
