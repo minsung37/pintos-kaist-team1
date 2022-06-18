@@ -8,4 +8,4 @@ vm/file.o: ../../vm/file.c ../../include/vm/vm.h \
  ../../include/lib/debug.h ../../include/lib/kernel/list.h \
  ../../include/threads/interrupt.h ../../include/threads/synch.h \
  ../../include/threads/vaddr.h ../../include/threads/loader.h \
- ../../include/userprog/process.h
+ ../../include/userprog/process.h ../../include/lib/string.h

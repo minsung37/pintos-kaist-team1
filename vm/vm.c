@@ -4,17 +4,27 @@
 #include "threads/thread.h"
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
 #include "hash.h"
+#include <bitmap.h>
+
 #include "devices/timer.h"
+
 #include <string.h>
 
 /* ------------------ project3 -------------------- */
-static struct list frame_table;
+static struct list victim_list;
+static struct lock victim_lock;
 /* ------------------------------------------------ */
 
 #define MAX_STACK_SIZE (1 << 20)
+
+// #define SWAP_DISK_SECTORS 2016
+// #define SECTORS_PER_PAGE 8
+// #define SWAP_SLOT_CNT ((SWAP_DISK_SECTORS) / (SECTORS_PER_PAGE))
+
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -33,7 +43,7 @@ vm_init (void) {
 	/* ------------------ project3 -------------------- */
 	// 확실하지 않음
 	// 프레임리스트 init
-	list_init(&frame_table);
+	list_init(&victim_list);
 	/* ------------------------------------------------ */
 }
 
@@ -64,7 +74,8 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
 		
 	struct supplemental_page_table *spt = &thread_current ()->spt;
-	struct page *newpage = (struct page *) calloc (1, sizeof (struct page));
+	// 1. page 할당 calloc으로 하면 안됨.
+	struct page *newpage = (struct page *) malloc (sizeof (struct page));
 
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
 
@@ -88,6 +99,11 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 				/* Set links */
 				child_f->page = child_p;
 				child_p->frame = child_f;
+
+				/* Copy swap index */
+				child_p->swap_idx = parent_p->swap_idx;
+
+				child_p->thread = parent_p->thread;
 
 				memcpy (child_f->kva, parent_p->frame->kva, PGSIZE);
 				pml4_set_page (thread_current ()->pml4, child_p->va, child_f->kva, child_p->writable);
@@ -121,9 +137,12 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		}
 		/* TODO: Insert the page into the spt. */
 		newpage->writable = writable;
+
 		if (!spt_insert_page (spt, newpage)) {
 			goto err;
 		}
+
+		newpage->thread = thread_current ();
 
 		return true;
 	}
@@ -166,72 +185,81 @@ spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
 /* Get the struct frame, that will be evicted. */
 static struct frame *
 vm_get_victim (void) {
-	struct frame *victim = NULL;
+	struct frame *victim;
 	 /* TODO: The policy for eviction is up to you. */
+	struct page *victim_page;
+	struct list_elem *e;
+	/* clock algorithm */
+	// if (!list_empty( &victim_list)) {
+	
+	ASSERT(!list_empty(&victim_list));
 
-	return victim;
+	for (;;) {
+		e = list_pop_front (&victim_list);
+		struct page *victim_page = list_entry (e, struct page, v_elem);
+
+		if (pml4_is_accessed (victim_page->thread->pml4, victim_page->va)) {
+
+			pml4_set_accessed (victim_page->thread->pml4, victim_page->va, false);
+			list_push_back (&victim_list, e);
+		}
+		else {
+
+			victim = victim_page->frame;
+
+			return victim;
+		}
+	}
+	// lock_release(&victim_lock);
 }
 
 /* Evict one page and return the corresponding frame.
  * Return NULL on error.*/
 static struct frame *
 vm_evict_frame (void) {
-	struct frame *victim UNUSED = vm_get_victim ();
 	/* TODO: swap out the victim and return the evicted frame. */
+	// PANIC("todo");
+	// lock_acquire(&victim_lock);
+	struct frame *victim = vm_get_victim ();
 
-	return NULL;
+	swap_out (victim->page);
+	// lock_release(&victim_lock);
+
+	return victim;
 }
 
 /* palloc() and get frame. If there is no available page, evict the page
  * and return it. This always return valid address. That is, if the user pool
  * memory is full, this function evicts the frame to get the available memory
- * space.*/
+ * space. */
 static struct frame *
 vm_get_frame (void) {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
 	// 1. frame 할당 calloc으로 하면 안됨.
-	frame = malloc(sizeof (struct frame));
+	frame = malloc (sizeof (struct frame));
 	frame->page = NULL;
-	frame->kva = palloc_get_page(PAL_USER | PAL_ZERO);
-	if (frame->kva == NULL)
-		PANIC("todo");
-	// 2. 모든 프레임이 차있어서 할당 실패시
-	// frame list 순회하면서 타겟 프레임 제거(해야함 앞으로 나중에 lru?)
-	// swap out 아직 미완성으로 인해 나중에 할 것.
-	// list_push_back(&frame_table, &frame->f_elem);
-	// if (list_size(&frame_table) == MAX_FRAME_SIZE) {
-	// 	clock_alg();
-	// }
+	frame->kva = palloc_get_page (PAL_USER | PAL_ZERO);
+
+	if (frame->kva == NULL) {
+		struct frame *victim = vm_evict_frame ();
+		// palloc_free_page (victim->kva);
+		memset(victim->kva, 0, PGSIZE);
+		frame->kva = victim->kva;
+		// frame->kva = palloc_get_page (PAL_USER | PAL_ZERO);
+	}
+
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
 	return frame;
 }
 
-/* pseudo code for clock algorithm */
-// void clock_alg (struct page *swapped_in_page) {
-// 	???? 시침이 언제 돌아야하나 알아보기
-// 	if cur_idx %= FRAME_TABLE_MAX;
-// 	if (frame_table[cur_idx]->reference_bit == 1) {
-// 		frame_table[cur_idx]->reference_bit--;
-
-// 	}
-// 	else {
-// 		swap_out (frame_table[cur_idx]);
-// 		swap_in (swapped_in_page);
-// 		frame_table[cur_idx] = swapped_in_page;
-// 		swapped_in_page->reference_bit++;
-
-// 	}
-// 	cur_idx++;
-// }
-
 
 /* Growing the stack. */
 static void
 vm_stack_growth (void *addr UNUSED) {
-	if (!vm_alloc_page (VM_ANON | VM_STACK, pg_round_down(addr), true)) {
-		exit(-1);
+	if (vm_alloc_page (VM_ANON | VM_STACK, pg_round_down(addr), true)) {
+		thread_current ()->stack_bottom -= PGSIZE;
 	}
 }
 
@@ -251,30 +279,34 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-	if (not_present) {
+	// if (not_present) {
 
 		page = spt_find_page (spt, addr);
+		if (not_present) {
+			if (page == NULL) {
+				void *curr_rsp = is_kernel_vaddr(f->rsp) ? current->rsp : f->rsp;
 
-		if (page == NULL) {
-			void *curr_rsp = current->rsp;
-			// printf("cur->rsp %p, f->rsp %p, addr %d\n", curr_rsp, f->rsp, addr);
-			// printf("f->rsp - addr %d\n", f->rsp - (int)addr);
-
-			if (addr < USER_STACK - MAX_STACK_SIZE) {
-				return false;
-			}
-
-
-			if (f->rsp - (int64_t) addr == 8) {
-				while (addr < curr_rsp) {
-					vm_stack_growth (curr_rsp - PGSIZE);
-					curr_rsp -= PGSIZE;
-					// printf("while loop!!!! cur->rsp %p, f->rsp %p, addr %p\n", curr_rsp, f->rsp, addr);
+				if (addr < USER_STACK - MAX_STACK_SIZE || addr > USER_STACK) {
+					return false;
 				}
-
-				return true;
+			/********/
+			if (not_present) {
+				if (!vm_claim_page(addr)) {
+					if (curr_rsp - 8 <= addr) {
+						while (current->stack_bottom > addr) {
+							vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
+						}
+						return true;
+					}
+					return false;
+				}
 			}
+			/********/
+			
+
+
 		}
+
 	}
 
 	return vm_do_claim_page (page);
@@ -301,9 +333,8 @@ vm_claim_page (void *va UNUSED) {
 static bool
 vm_do_claim_page (struct page *page) {
 
-	if (page == NULL) {
+	if (page == NULL)
 		return false;
-	}
 	
 	struct frame *frame = vm_get_frame ();
 
@@ -313,7 +344,7 @@ vm_do_claim_page (struct page *page) {
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	pml4_set_page (thread_current ()->pml4, page->va, frame->kva, page->writable);
-	// page->valid_bit = true;
+	list_push_back (&victim_list, &page->v_elem);
 
 	return swap_in (page, frame->kva);		// uninit_initialize (page, frame->kva)
 }

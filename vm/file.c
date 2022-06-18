@@ -3,6 +3,7 @@
 #include "vm/vm.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
+#include <string.h>
 
 static bool file_backed_swap_in (struct page *page, void *kva);
 static bool file_backed_swap_out (struct page *page);
@@ -42,8 +43,8 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 
 		return false;
 	}
-
-	memset (kva + f_info->read_bytes, 0, f_info->zero_bytes);
+    if (f_info->zero_bytes > 0)
+	    memset (kva + f_info->read_bytes, 0, f_info->zero_bytes);
 	
 	return true;
 }
@@ -52,12 +53,34 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 static bool
 file_backed_swap_in (struct page *page, void *kva) {
 	struct file_page *file_page UNUSED = &page->file;
+
+	if (file_read_at (file_page->file, kva, file_page->read_bytes, file_page->ofs) != file_page->read_bytes) {
+		vm_dealloc_page (page);
+
+		return false;
+	}
+
+    if (file_page->zero_bytes > 0)
+	    memset (kva + file_page->read_bytes, 0, file_page->zero_bytes);
+	
+	return true;
+
 }
 
 /* Swap out the page by writeback contents to the file. */
 static bool
 file_backed_swap_out (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
+
+    if (pml4_is_dirty(page->thread->pml4, page)) {
+        if (file_write_at (file_page->file, page->va, file_page->read_bytes, file_page->ofs) != file_page->read_bytes)
+            return false;
+            
+        pml4_set_dirty(page->thread->pml4, page, false);
+    }
+    pml4_clear_page (page->thread->pml4, page->va);
+
+    return true;
 }
 
 /* Destory the file backed page. PAGE will be freed by the caller. */
@@ -71,17 +94,11 @@ do_mmap (void *addr, size_t length, int writable,
         struct file *file, off_t offset) {
     /* Maps length bytes the file open as fd 
      * starting from offset byte into the process's virtual address space at addr. */
-	// printf("do_mmap starts!\n");
 
     struct thread *current = thread_current ();
-    // struct mmap_file *mfile = (struct mmap_file *) malloc(sizeof (struct mmap_file));
-	// printf("file_length %d, length %d\n", file_length(file), length);
 	size_t f_length = file_length(file);
-    // mfile->file = file;
-    // mfile->sa = addr;
-    // list_push_back (&current->mfile_list, &mfile->mf_elem);
-	// printf("from %d in file_length %d\n", offset, length);
     void *curr = addr;
+
     while (f_length > 0)
     {
         /* Do calculate how to fill this page.
@@ -117,34 +134,24 @@ do_munmap (void *addr) {
 
     struct supplemental_page_table *spt = &thread_current ()->spt;
     void *curr = addr;
-	// printf("do_MUNmap call! ismapped? %d\n", (spt_find_page(spt, addr)->is_mmapped));
-	// printf("do_MUNmap call! isnull? %d\n", (spt_find_page(spt, addr) == NULL) || (!spt_find_page(spt, addr)->is_mmapped));
     struct file *f = spt_find_page(spt, curr)->file.file;
 
     for (curr = addr; (spt_find_page(spt, curr) != NULL); curr += PGSIZE) {
         struct page *p = spt_find_page(spt, curr);
-        // struct file_page *fp = &p->file;
-        // printf("f %p, fp_file %p\n", f, p->file.file);
         if (!p->is_mmapped || p->file.file != f)
             return;
         
-        // printf("11 do_MUNmap call! page %d\n", (spt_find_page(spt, curr)));
-        // printf("current addr %p, dirty bit? %d\n", curr, pml4_is_dirty(thread_current ()->pml4, curr));
         if (pml4_is_dirty(thread_current ()->pml4, curr)) {
-	        // printf("22 do_MUNmap call! page %d\n", (spt_find_page(spt, curr)));
 
-            file_write_at (p->file.file, curr, p->file.read_bytes, p->file.ofs);
-	        // printf("33 do_MUNmap call! page %d\n", (spt_find_page(spt, curr)));
+            if (file_write_at (p->file.file, curr, p->file.read_bytes, p->file.ofs) != p->file.read_bytes)
+                return;
 
             pml4_set_dirty(thread_current ()->pml4, curr, false);
         }
-	    // printf("44 do_MUNmap call! page %d\n", (spt_find_page(spt, curr)));
 
         p->is_mmapped = false;
-        // vm_dealloc_page(p);
+        // memset(p->frame->kva, 0, PGSIZE);
         // destroy (p);
-	    // printf("55 do_MUNmap call! page %d\n", (spt_find_page(spt, curr)));
     }
-	// printf("do_MUNmap finished!\n");
 }
 
