@@ -1,0 +1,14 @@
+FAIL
+Kernel panic in run: PANIC at ../../threads/interrupt.c:138 in intr_enable(): assertion `!intr_context ()' failed.
+Call stack: 0x800421870a 0x8004208910 0x8004208897 0x800420a7a0 0x8004213fe9 0x800422033b 0x800421e636 0x8004220f2a 0x80042068cc 0x8004206186
+Translation of call stack:
+0x000000800421870a: debug_panic (lib/kernel/debug.c:32)
+0x0000008004208910: intr_enable (threads/interrupt.c:144)
+0x0000008004208897: intr_set_level (threads/interrupt.c:131 (discriminator 1))
+0x000000800420a7a0: sema_down (threads/synch.c:80)
+0x0000008004213fe9: disk_write (devices/disk.c:249)
+0x000000800422033b: inode_create (filesys/inode.c:89 (discriminator 3))
+0x000000800421e636: filesys_create (filesys/filesys.c:66)
+0x0000008004220f2a: fsutil_put (filesys/fsutil.c:108)
+0x00000080042068cc: run_actions (threads/init.c:297)
+0x0000008004206186: main (threads/init.c:125)

@@ -280,18 +280,19 @@ void process_exit(void)
 
 #ifdef VM
    	struct hash_iterator iter;
-	// printf("buckets %p\n", current->spt.hash_table.buckets);
+
 	if (current->spt.hash_table.buckets != NULL) {
 		hash_first (&iter, &current->spt.hash_table);
 		while (hash_next (&iter))
 		{
 			struct page *p = hash_entry (hash_cur (&iter), struct page, h_elem);
-			// printf("page? p %p is_mmapped? %d\n", p, p->is_mmapped);
+
 			if (p != NULL && p->is_mmapped)
 				munmap(p->va);
 		}
 	}
 #endif
+
 	sema_up(&current->wait_sema);
 	sema_down(&current->exit_sema);
 	
@@ -307,14 +308,6 @@ process_cleanup(void)
 	struct thread *current = thread_current();
 
 #ifdef VM
-   	// struct hash_iterator iter;
-
-	// hash_first (&iter, &current->spt.hash_table);
-	// while (hash_next (&iter))
-	// {
-	// 	struct page *p = hash_entry (hash_cur (&iter), struct page, h_elem);
-	// 	munmap(p->va);
-	// }
 	supplemental_page_table_kill(&current->spt);
 #endif
 
@@ -831,6 +824,7 @@ setup_stack(struct intr_frame *if_)
 	/* TODO: Your code goes here */
 	if (success = vm_alloc_page (VM_ANON | VM_STACK, stack_bottom, true)) {
 		if_->rsp = USER_STACK;
+		thread_current()->stack_bottom = stack_bottom;
 	}
 
 	return success;

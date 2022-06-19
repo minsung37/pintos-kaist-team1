@@ -6,7 +6,9 @@
         "file.h": "c",
         "*.inc": "c",
         "list.h": "c",
-        "vm.h": "c"
+        "vm.h": "c",
+        "timer.h": "c",
+        "bitmap.h": "c"
     },
     "C_Cpp.dimInactiveRegions": false
 }

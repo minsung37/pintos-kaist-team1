@@ -384,7 +384,7 @@ intr_dump_frame (const struct intr_frame *f) {
 	uint64_t cr2 = rcr2();
 	printf ("Interrupt %#04llx (%s) at rip=%llx\n",
 			f->vec_no, intr_names[f->vec_no], f->rip);
-	printf (" cr2=%016llx error=%16llx\n", cr2, f->error_code);
+	printf ("cr2=%016llx error=%16llx\n", cr2, f->error_code);
 	printf ("rax %016llx rbx %016llx rcx %016llx rdx %016llx\n",
 			f->R.rax, f->R.rbx, f->R.rcx, f->R.rdx);
 	printf ("rsp %016llx rbp %016llx rsi %016llx rdi %016llx\n",

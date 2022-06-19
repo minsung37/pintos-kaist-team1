@@ -6,8 +6,6 @@ enum vm_type;
 
 /* Anonymous pages are used in executable, such as for stack and heap. */
 struct anon_page {
-    enum vm_type type;
-    
 };
 
 void vm_anon_init (void);

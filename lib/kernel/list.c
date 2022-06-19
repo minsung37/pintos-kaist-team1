@@ -429,7 +429,7 @@ list_insert_ordered (struct list *list, struct list_elem *elem,
 			break;
 	return list_insert (e, elem);
 }
-
+ 
 /* Iterates through LIST and removes all but the first in each
    set of adjacent elements that are equal according to LESS
    given auxiliary data AUX.  If DUPLICATES is non-null, then the

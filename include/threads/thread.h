@@ -112,13 +112,13 @@ struct  thread {
 	struct supplemental_page_table spt;
 #endif
 
-	// struct list mfile_list;
-
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	struct intr_frame temp_tf;
 
 	uint64_t rsp;						/* Saving rsp on the INITIAL transition from user to kernel mode */
+
+	void *stack_bottom;
 
 	unsigned magic;                     /* Detects stack overflow. */
 

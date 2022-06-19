@@ -86,8 +86,6 @@ void
 syscall_handler(struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
 	thread_current ()->rsp = f->rsp;
-	// printf("syscall num %d rsp: %p stack bottom:%p\n", f->R.rax, f->rsp, pg_round_down(f->rsp));
-	// printf("syscall cs: %p vtop s:%p\n", f->cs, ptov(f->cs));
 	switch (f->R.rax)
 	{
 	case SYS_HALT:
@@ -176,7 +174,9 @@ exit (int status) {
 int 
 fork (const char *thread_name) {
 	check_address(thread_name);
+	lock_acquire(&filesys_lock);
 	int ret = process_fork(thread_name, &thread_current()->temp_tf);
+	lock_release(&filesys_lock);
 	return ret;
 }
 
@@ -201,13 +201,20 @@ wait (tid_t pid) {
 bool 
 create (const char *file, unsigned initial_size) {
 	check_address(file);
-	return filesys_create(file, initial_size);
+	lock_acquire(&filesys_lock);
+	bool success = filesys_create(file, initial_size);
+	lock_release(&filesys_lock);
+
+	return success;
 }
 
 bool 
 remove (const char *file) {
 	check_address(file);
-	return filesys_remove(file);
+	lock_acquire(&filesys_lock);
+	bool success = filesys_remove(file);
+	lock_release(&filesys_lock);
+	return success;
 }
 
 int 
@@ -216,15 +223,18 @@ open (const char *file) {
 
 	struct thread *current = thread_current();
 	int i;
-
 	if (current->next_fd < 128) {
+		lock_acquire(&filesys_lock);
 		struct file *new_file = filesys_open(file);
+		lock_release(&filesys_lock);
 
 		if (new_file != NULL) {
 			current->fdt[current->next_fd] = new_file;
+
 			return current->next_fd++;
 		}
 	}
+
 	return -1;
 }
 
@@ -245,9 +255,9 @@ read (int fd, void *buffer, unsigned length) {
 	int bytes_read;
 
 	if (fd == 0) {
-		// lock_acquire(&filesys_lock);
+		lock_acquire(&filesys_lock);
 		bytes_read = input_getc();
-		// lock_release(&filesys_lock);
+		lock_release(&filesys_lock);
 
 		return bytes_read;
 	}
@@ -267,25 +277,25 @@ write (int fd, const void *buffer, unsigned length) {
 	// check_valid_buffer(buffer, length);
 
 	if (fd == 1) {
-		// lock_acquire(&filesys_lock);
+		lock_acquire(&filesys_lock);
 		putbuf(buffer, length);
-		// lock_release(&filesys_lock);
+		lock_release(&filesys_lock);
 
 		return length;
 	}
 
 	if (fd >= 2) {
-		lock_acquire(&filesys_lock);
 		struct file *file = thread_current()->fdt[fd];
 
 		if (file != NULL) {
+			lock_acquire(&filesys_lock);
 			int bytes_written = file_write(file, buffer, length);
 			lock_release(&filesys_lock);
 
 			return bytes_written;
 		}
 
-		lock_release(&filesys_lock);
+		// lock_release(&filesys_lock);
 	}
 
 	return -1;
@@ -293,26 +303,26 @@ write (int fd, const void *buffer, unsigned length) {
 
 void 
 seek (int fd, unsigned position) {
-	struct file *file = thread_current()->fdt[fd];
+	struct file *file = thread_current ()->fdt[fd];
 	if (file != NULL)
-		file_seek(file, position);
+		file_seek (file, position);
 }
 
 unsigned 
 tell (int fd) {
-	struct file *file = thread_current()->fdt[fd];
+	struct file *file = thread_current ()->fdt[fd];
 	if (file != NULL)
 		return file_tell(file);
 }
 
 void 
 close (int fd) {
-	struct file *file = thread_current()->fdt[fd];
+	struct file *file = thread_current ()->fdt[fd];
 	if (file != NULL) {
-		lock_acquire(&filesys_lock);
-		thread_current()->fdt[fd] = NULL;
-		file_close(thread_current()->fdt[fd]);
-		lock_release(&filesys_lock);
+		lock_acquire (&filesys_lock);
+		file_close (file);
+		lock_release (&filesys_lock);
+		thread_current ()->fdt[fd] = NULL;
 	}
 }
 
@@ -320,27 +330,28 @@ close (int fd) {
 void *
 mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 
-	// check_valid_buffer (addr, length);
-	// printf("===========mmap calls!===========\n");
-	// printf("addr %p %d %d\n", addr, is_kernel_vaddr(addr), pg_ofs(addr));
 	if (addr ==  NULL || is_kernel_vaddr(addr) || pg_ofs(addr))
 		return NULL;
-	// printf("length %d length <0 ? %d", (int64_t)length, length <= 0);
+
 	if ((int64_t)length <= 0 || (int64_t)length < (int64_t)offset)
 		return NULL;
 
 	if (fd < 2)
 		return NULL;
 
-	struct file *ofile = file_reopen(thread_current ()->fdt[fd]);
-	// printf("-----mmap ofile addr %p\n", ofile);
-	return do_mmap (addr, length, writable, ofile, offset);
+	/* Use the file_reopen function to obtain a separate and independent reference 
+	 * to the file for each of its mappings. */
+
+	struct file *ofile = file_reopen (thread_current ()->fdt[fd]);
+	lock_acquire (&filesys_lock);
+	void *success = do_mmap (addr, length, writable, ofile, offset);
+	lock_release (&filesys_lock);
+	return success;
 }
 
 void 
 munmap (void *addr) {
-	// printf("===========MUNmap calls!===========\n");
-
 	check_address (addr);
-	return do_munmap (addr);
+	do_munmap (addr);
+	return;
 }

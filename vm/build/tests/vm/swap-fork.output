@@ -1,0 +1,44 @@
+Kernel command line: -q -f put swap-fork put child-swap run swap-fork
+0 ~ 9fc00 1
+100000 ~ 27e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x27e0000 (Usable: 39,808 kB)
+Calibrating timer...  157,081,600 loops/s.
+hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
+hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
+hd1:0: detected 4,119 sector (2 MB) disk, model "QEMU HARDDISK", serial "QM00003"
+hd1:1: detected 403,200 sector (196 MB) disk, model "QEMU HARDDISK", serial "QM00004"
+Formatting file system...done.
+Boot complete.
+Putting 'swap-fork' into the file system...
+Kernel PANIC at ../../threads/interrupt.c:138 in intr_enable(): assertion `!intr_context ()' failed.
+Call stack: 0x800421870a 0x8004208910 0x8004208897 0x800420a7a0 0x8004213fe9 0x800422033b 0x800421e636 0x8004220f2a 0x80042068cc 0x8004206186.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Kernel PANIC recursion at ../../threads/synch.c:68 in sema_down().
+Interrupt 0x0d (#GP General Protection Exception) at rip=8004220a08
+cr2=0000000000000000 error=               0
+rax cccccccccccccccc rbx 0000000000204400 rcx 000000800422391d rdx 0000000000000023
+rsp 0000008004000a10 rbp 0000008004000a20 rsi 0000000000000044 rdi cccccccccccccccc
+rip 0000008004220a08 r8 000000800422394a  r9 000000800421862f r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00200002
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Interrupt 0x0d (#GP General Protection Exception) at rip=80042204ee
+cr2=0000000000000000 error=               0
+rax cccccccccccccccc rbx 0000000000204400 rcx 0000008004227998 rdx 000000000000002b
+rsp 0000008004000800 rbp 0000008004000810 rsi 000000000000000a rdi cccccccccccccccc
+rip 00000080042204ee r8 000000800421862f  r9 000000800421bb83 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00200086
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Interrupt 0x0d (#GP General Protection Exception) at rip=80042204ee
+cr2=0000000000000000 error=               0
+rax cccccccccccccccc rbx 0000000000204400 rcx 0000008004227998 rdx 0000000000000033
+rsp 00000080040005f0 rbp 0000008004000600 rsi 000000000000000a rdi cccccccccccccccc
+rip 00000080042204ee r8 000000800421862f  r9 000000800421bb83 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00200086
+es: 0010 ds: 0010 cs: 0008 ss: 0010

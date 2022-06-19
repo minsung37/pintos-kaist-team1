@@ -48,40 +48,16 @@ struct page {
 	void *va;              /* Address in terms of user space */
 	struct frame *frame;   /* Back reference for frame */
 
-	
 	/* Your implementation */
-	/* ------------------ project3 -------------------- */
-
-	// struct file *run_file;
-
-	enum vm_type type;
-
-	// off_t ofs;
-	// int file_size;
-	// size_t read_bytes; 
-	// size_t zero_bytes;
 	bool writable;
 	
-	struct hash_elem h_elem;
+	struct hash_elem h_elem;					/* hash elem for supplemental page table */
+	struct list_elem v_elem;					/* list elem for global victim list */ 
 	
-	bool is_mmapped;
+	bool is_mmapped;							/* check whether the page called mmap */
 
-	bool valid_bit; // is_loaded
-	bool reference_bit;
-	bool modified_bit;
-	bool accessed_bit;
-	bool dirty_bit;
-
-	/* Flag bits. */
-	/* Address bits. */
-	/* Bits available for OS use. */
-	/* 1=present, 0=not present. */
-	/* 1=read/write, 0=read-only. */
-	/* 1=user/kernel, 0=kernel only. */
-	/* 1=accessed, 0=not acccessed. */
-	/* 1=dirty, 0=not dirty (PTEs only). */
-
-	/* ------------------------------------------------ */
+	size_t swap_idx;							/* bitmap index where the page was swapped out */
+	struct thread *thread;						/* thread whose pml4 the page belongs to */
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -100,9 +76,6 @@ struct page {
 struct frame {
 	void *kva;
 	struct page *page;
-	/* ------------------ project3 -------------------- */
-	struct list_elem f_elem;
-	/* ------------------------------------------------ */
 };
 
 
@@ -128,10 +101,7 @@ struct page_operations {
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table {
-	
-	/* ------------------ project3 -------------------- */
 	struct hash hash_table;
-	/* ------------------------------------------------ */
 };
 
 #include "threads/thread.h"

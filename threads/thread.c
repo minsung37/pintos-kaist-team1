@@ -335,11 +335,16 @@ void thread_yield(void)
 	struct thread *current = thread_current();
 	enum intr_level old_level;
 
+	ASSERT(is_thread(current));
 	ASSERT(!intr_context());
 
 	old_level = intr_disable();
-	if (current != idle_thread)
+	if (current != idle_thread) {
 		list_insert_ordered(&ready_list, &current->elem, cmp_priority, NULL);
+		// list_push_back (&ready_list, &current->elem);
+		// list_sort(&ready_list, cmp_priority, NULL);
+
+	}
 	do_schedule(THREAD_READY);
 	intr_set_level(old_level);
 }
@@ -347,27 +352,56 @@ void thread_yield(void)
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority)
 {
-
 	if (thread_mlfqs)
 		return;
 
 	struct thread *current = thread_current();
+	enum intr_level old_level;
+
+	old_level = intr_disable ();
 
 	current->origin_priority = new_priority;
 	refresh_priority();
 	if (current->wait_on_lock != NULL)
 		donate_priority();
 	test_max_priority();
+	intr_set_level (old_level);
 }
+
+// void test_max_priority(void)
+// {
+// 	enum intr_level old_level;
+
+// 	old_level = intr_disable ();
+
+// 	if (!list_empty(&ready_list))
+// 	{
+// 		if (cmp_priority(list_front(&ready_list), &thread_current()->elem, NULL)) {
+// 			intr_set_level (old_level);
+// 			thread_yield();
+// 		}
+// 	}
+
+// 	intr_set_level (old_level);
+// }
 
 void test_max_priority(void)
 {
-	struct thread *current = thread_current ();
+	struct thread *current = thread_current();
+	enum intr_level old_level;
+
+	old_level = intr_disable ();
+
 	if (!list_empty(&ready_list))
 	{
-		if (cmp_priority(list_begin(&ready_list), &thread_current()->elem, NULL))
-			thread_yield();
+		if (cmp_priority(list_front(&ready_list), &thread_current()->elem, NULL)) {
+			if (current != idle_thread) {
+				list_insert_ordered(&ready_list, &current->elem, cmp_priority, NULL);
+			}
+			do_schedule(THREAD_READY);
+		}
 	}
+	intr_set_level (old_level);
 }
 
 bool cmp_priority(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)

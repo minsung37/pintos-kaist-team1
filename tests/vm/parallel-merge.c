@@ -60,6 +60,8 @@ sort_chunks (const char *subprocess, int exit_status)
       /* Sort with subprocess. */
       snprintf (cmd, sizeof cmd, "%s %s", subprocess, fn);
       children[i] = fork (subprocess);
+      // printf("child idx %d\n", children[i]);
+
       if (children[i] == 0)
         CHECK ((children[i] = exec (cmd)) != -1, "exec \"%s\"", cmd);
       quiet = false;

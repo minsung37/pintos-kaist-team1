@@ -6,7 +6,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Wed Jun 15 20:50:17 2022
+# Make data base, printed on Sun Jun 19 06:37:39 2022
 
 # Variables
 
@@ -51,7 +51,7 @@ LESSOPEN = | /usr/bin/lesspipe %s
 # environment
 VSCODE_CWD = /home/ubuntu
 # environment
-SSH_CONNECTION = 143.248.204.7 52460 172.31.35.253 22
+SSH_CONNECTION = 210.107.130.110 64154 172.31.35.253 22
 # environment
 PATH = /home/ubuntu/.vscode-server/bin/c3511e6c69bb39013c4a4b7b9566ec1ca73fc4d5/bin/remote-cli:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
 # environment
@@ -71,7 +71,7 @@ CLEAN_SUBDIRS = $(BUILD_SUBDIRS)
 # environment
 PWD = /home/ubuntu/pintos-kaist-team1
 # environment
-VSCODE_IPC_HOOK_CLI = /run/user/1000/vscode-ipc-3c5ae6b5-1e19-4a1c-8aa2-442f226e7966.sock
+VSCODE_IPC_HOOK_CLI = /run/user/1000/vscode-ipc-85d2b1f5-eb73-43aa-87b2-afe148b7b663.sock
 # automatic
 *D = $(patsubst %/,%,$(dir $*))
 # makefile (from 'Makefile', line 1)
@@ -103,7 +103,7 @@ MAKECMDGOALS := all
 # environment
 SHLVL = 3
 # environment
-XDG_SESSION_ID = 786
+XDG_SESSION_ID = 9
 # environment
 USER = ubuntu
 # makefile
@@ -121,7 +121,7 @@ MAKEFLAGS = pqrR
 # environment
 MFLAGS = -pqrR
 # environment
-SSH_CLIENT = 143.248.204.7 52460 22
+SSH_CLIENT = 210.107.130.110 64154 22
 # environment
 MAIL = /var/mail/ubuntu
 # automatic
@@ -280,12 +280,13 @@ TAGS::
 
 # No general ('VPATH' variable) search path.
 
+ 
 # strcache buffers: 1 (0) / strings = 39 / storage = 349 B / avg = 8 B
 # current buf: size = 8162 B / used = 349 B / count = 39 / avg = 8 B
 
 # strcache performance: lookups = 56 / hit rate = 30%
 # hash-table stats:
 # Load=39/8192=0%, Rehash=0, Collisions=1/56=2%
-# Finished Make data base on Wed Jun 15 20:50:17 2022
+# Finished Make data base on Sun Jun 19 06:37:39 2022
 
  

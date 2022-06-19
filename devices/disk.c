@@ -213,7 +213,6 @@ disk_read (struct disk *d, disk_sector_t sec_no, void *buffer) {
 
 	ASSERT (d != NULL);
 	ASSERT (buffer != NULL);
-
 	c = d->channel;
 	lock_acquire (&c->lock);
 	select_sector (d, sec_no);
@@ -224,6 +223,7 @@ disk_read (struct disk *d, disk_sector_t sec_no, void *buffer) {
 	input_sector (c, buffer);
 	d->read_cnt++;
 	lock_release (&c->lock);
+
 }
 
 /* Write sector SEC_NO to disk D from BUFFER, which must contain

@@ -74,7 +74,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
 		
 	struct supplemental_page_table *spt = &thread_current ()->spt;
-	// 1. page 할당 calloc으로 하면 안됨.
 	struct page *newpage = (struct page *) malloc (sizeof (struct page));
 
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
@@ -84,7 +83,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* TODO: Create the page, fetch the initializer according to the VM type,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
-
 		if (type & VM_FORK) {
 
 			struct page *parent_p = (struct page *) aux;
@@ -99,11 +97,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 				/* Set links */
 				child_f->page = child_p;
 				child_p->frame = child_f;
-
-				/* Copy swap index */
-				child_p->swap_idx = parent_p->swap_idx;
-
-				child_p->thread = parent_p->thread;
 
 				memcpy (child_f->kva, parent_p->frame->kva, PGSIZE);
 				pml4_set_page (thread_current ()->pml4, child_p->va, child_f->kva, child_p->writable);
@@ -279,32 +272,25 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-	// if (not_present) {
+	if (not_present) {
 
 		page = spt_find_page (spt, addr);
-		if (not_present) {
-			if (page == NULL) {
-				void *curr_rsp = is_kernel_vaddr(f->rsp) ? current->rsp : f->rsp;
-
-				if (addr < USER_STACK - MAX_STACK_SIZE || addr > USER_STACK) {
-					return false;
-				}
-			/********/
-			if (not_present) {
-				if (!vm_claim_page(addr)) {
-					if (curr_rsp - 8 <= addr) {
-						while (current->stack_bottom > addr) {
-							vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
-						}
-						return true;
-					}
-					return false;
-				}
+		if (page == NULL) {
+			if (addr < USER_STACK - MAX_STACK_SIZE || addr > USER_STACK) {
+				return false;
 			}
 			/********/
-			
-
-
+			void *curr_rsp = is_kernel_vaddr(f->rsp) ? current->rsp : f->rsp;
+			if (curr_rsp - 8 <= addr) {
+				while (current->stack_bottom > addr) {
+					vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
+				}
+				return true;
+			}
+			else {
+				return false;
+			}
+			/********/
 		}
 
 	}
